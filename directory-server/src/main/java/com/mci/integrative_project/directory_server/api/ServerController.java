@@ -6,6 +6,8 @@ import com.mci.integrative_project.directory_server.logic.ServerRegistry;
 import com.mci.integrative_project.directory_server.model.EServerStatus;
 import com.mci.integrative_project.directory_server.model.GameState;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,7 +32,7 @@ public class ServerController {
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public RegisterServerResponse register(@RequestBody RegisterServerRequest request) {
+	public RegisterServerResponse register(@RequestBody @Valid RegisterServerRequest request) {
 		String serverId = "srv-" + UUID.randomUUID().toString().substring(0, 4);
 		this.serverRegistry.register(serverId, request.name(), request.host(), request.port(), 0, request.maxPlayers());
 		return new RegisterServerResponse(serverId, 10);
@@ -61,7 +63,8 @@ public class ServerController {
 
 	@PutMapping("/{id}/heartbeat")
 	@ResponseStatus(HttpStatus.OK)
-	public HeartbeatServerResponse heartbeat(@PathVariable String id, @RequestBody HeartbeatServerRequest request) {
+	public HeartbeatServerResponse heartbeat(@PathVariable String id,
+			@RequestBody @Valid HeartbeatServerRequest request) {
 		if (!this.serverRegistry.contains(id)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 		}

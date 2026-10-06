@@ -1,4 +1,7 @@
 package com.mci.integrative_project.directory_server.api;
 
-public record RegisterServerRequest(String name, String host, Integer port, Integer maxPlayers) {
+import jakarta.validation.constraints.NotNull;
+
+public record RegisterServerRequest(@NotNull String name, @NotNull String host, @NotNull Integer port,
+        @NotNull Integer maxPlayers) {
 }
