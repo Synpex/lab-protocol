@@ -3,6 +3,7 @@ package com.mci.integrative_project.directory_server.api;
 import java.util.List;
 import java.util.UUID;
 import com.mci.integrative_project.directory_server.logic.ServerRegistry;
+import com.mci.integrative_project.directory_server.model.GameState;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -35,9 +36,17 @@ public class ServerController {
 	@GetMapping
 	@ResponseStatus(HttpStatus.OK)
 	public List<GetServerResponse> getMethodName(@RequestParam(required = false) String status) {
-		return List.of(
-				new GetServerResponse("srv-0000", "MCI Arena #1", "192.168.1.100", 9000, 2, 4, "LOBBY"),
-				new GetServerResponse("srv-0001", "MCI Arena #2", "192.168.1.100", 9000, 2, 4, "RUNNING"));
+		List<GameState> servers = this.serverRegistry.getServers();
+		return servers.stream()
+				.map(gameState -> new GetServerResponse(
+						gameState.getServerId(),
+						gameState.getName(),
+						gameState.getHost(),
+						gameState.getPort(),
+						gameState.getCurrentPlayers(),
+						gameState.getMaxPlayers(),
+						gameState.getStatus().name()))
+				.toList();
 	}
 
 	@DeleteMapping("/{id}")
