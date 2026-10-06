@@ -1,14 +1,14 @@
 package com.mci.integrative_project.directory_server.model;
 
 public class GameState {
-    private EServerStatus status;
-    private String serverId;
-    private String name;
-    private String host;
-    private int port;
-    private int currentPlayers;
-    private int maxPlayers;
-    private long lastHeartbeat;
+    private final String serverId;
+    private final String name;
+    private final String host;
+    private final int port;
+    private volatile EServerStatus status;
+    private volatile int currentPlayers;
+    private volatile int maxPlayers;
+    private volatile long lastHeartbeat;
 
     public GameState(String serverId, String name, String host, int port, int currentPlayers, int maxPlayers,
             EServerStatus status) {

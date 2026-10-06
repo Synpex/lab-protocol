@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -37,6 +38,16 @@ public class ServerRegistry {
             return true;
         }
         return false;
+    }
+
+    public boolean contains(String serverId) {
+        return servers.containsKey(serverId);
+    }
+
+    @Scheduled(fixedRate = 5000)
+    public void removeStaleServers() {
+        long cutoff = System.currentTimeMillis() - 30_000;
+        servers.values().removeIf(s -> s.getLastHeartbeat() < cutoff);
     }
 
 }
