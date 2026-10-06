@@ -37,8 +37,8 @@ public class ServerController {
 	@ResponseStatus(HttpStatus.OK)
 	public List<GetServerResponse> getMethodName(@RequestParam(required = false) String status) {
 		return List.of(
-				new GetServerResponse("srv-0000", "MCI Arena #1", "192.168.1.100", 9000, 2, 4, "LOBBY", 10),
-				new GetServerResponse("srv-0001", "MCI Arena #2", "192.168.1.100", 9000, 2, 4, "RUNNING", 10));
+				new GetServerResponse("srv-0000", "MCI Arena #1", "192.168.1.100", 9000, 2, 4, "LOBBY"),
+				new GetServerResponse("srv-0001", "MCI Arena #2", "192.168.1.100", 9000, 2, 4, "RUNNING"));
 	}
 
 	@DeleteMapping("/{id}")
