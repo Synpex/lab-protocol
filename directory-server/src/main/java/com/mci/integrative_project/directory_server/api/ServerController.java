@@ -2,6 +2,7 @@ package com.mci.integrative_project.directory_server.api;
 
 import java.util.List;
 import java.util.UUID;
+import com.mci.integrative_project.directory_server.logic.ServerRegistry;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,11 +18,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/servers")
 public class ServerController {
+	private final ServerRegistry serverRegistry;
+
+	public ServerController(ServerRegistry serverRegistry) {
+		this.serverRegistry = serverRegistry;
+	}
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	public RegisterServerResponse register(@RequestBody RegisterServerRequest request) {
 		String serverId = "srv-" + UUID.randomUUID().toString().substring(0, 4);
+		this.serverRegistry.register(serverId, request.name(), request.host(), request.port(), 0, request.maxPlayers());
 		return new RegisterServerResponse(serverId, 10);
 	}
 
