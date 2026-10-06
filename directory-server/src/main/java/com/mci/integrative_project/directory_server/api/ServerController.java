@@ -2,8 +2,9 @@ package com.mci.integrative_project.directory_server.api;
 
 import java.util.List;
 import java.util.UUID;
+
+import com.mci.integrative_project.directory_server.errors.ServerNotFoundException;
 import com.mci.integrative_project.directory_server.logic.ServerRegistry;
-import com.mci.integrative_project.directory_server.model.EServerStatus;
 import com.mci.integrative_project.directory_server.model.GameState;
 
 import jakarta.validation.Valid;
@@ -58,7 +59,9 @@ public class ServerController {
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void deleteServer(@PathVariable String id) {
-		this.serverRegistry.unregister(id);
+		if (!this.serverRegistry.unregister(id)) {
+			throw new ServerNotFoundException();
+		}
 	}
 
 	@PutMapping("/{id}/heartbeat")
@@ -66,7 +69,7 @@ public class ServerController {
 	public HeartbeatServerResponse heartbeat(@PathVariable String id,
 			@RequestBody @Valid HeartbeatServerRequest request) {
 		if (!this.serverRegistry.contains(id)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+			throw new ServerNotFoundException();
 		}
 		this.serverRegistry.heartbeat(id, request.status(), request.currentPlayers(),
 				request.maxPlayers());
