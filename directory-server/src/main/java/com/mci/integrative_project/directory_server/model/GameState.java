@@ -8,8 +8,9 @@ public class GameState {
     private int port;
     private int currentPlayers;
     private int maxPlayers;
+    private long lastHeartbeat;
 
-    GameState(String serverId, String name, String host, int port, int currentPlayers, int maxPlayers,
+    public GameState(String serverId, String name, String host, int port, int currentPlayers, int maxPlayers,
             EServerStatus status) {
         this.serverId = serverId;
         this.name = name;
@@ -18,6 +19,7 @@ public class GameState {
         this.currentPlayers = currentPlayers;
         this.maxPlayers = maxPlayers;
         this.status = status;
+        this.lastHeartbeat = System.currentTimeMillis();
     }
 
     public String getServerId() {
@@ -46,5 +48,25 @@ public class GameState {
 
     public EServerStatus getStatus() {
         return status;
+    }
+
+    public long getLastHeartbeat() {
+        return lastHeartbeat;
+    }
+
+    public void updateLastHeartbeat() {
+        this.lastHeartbeat = System.currentTimeMillis();
+    }
+
+    public void setStatus(EServerStatus status) {
+        this.status = status;
+    }
+
+    public void setCurrentPlayers(int currentPlayers) {
+        this.currentPlayers = currentPlayers;
+    }
+
+    public void setMaxPlayers(int maxPlayers) {
+        this.maxPlayers = maxPlayers;
     }
 }

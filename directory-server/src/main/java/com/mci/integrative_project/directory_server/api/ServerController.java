@@ -14,14 +14,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.mci.integrative_project.directory_server.api.RegisterServerResponse;
-
-import com.mci.integrative_project.directory_server.api.RegisterServerRequest;
-
-import com.mci.integrative_project.directory_server.api.HeartbeatServerResponse;
-
-import com.mci.integrative_project.directory_server.api.HeartbeatServerRequest;
-
 @RestController
 @RequestMapping("/api/servers")
 public class ServerController {
