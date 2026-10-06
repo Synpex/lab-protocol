@@ -39,4 +39,8 @@ public class ServerRegistry {
         return false;
     }
 
+    public boolean contains(String serverId) {
+        return servers.containsKey(serverId);
+    }
+
 }
