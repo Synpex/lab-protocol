@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spielserver &amp; Client · Labyrinth</title>
+  <link rel="stylesheet" href="../assets/asyncapi.css">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="../"><span class="brand-mark" aria-hidden="true">L</span> Labyrinth <span class="brand-detail">Schnittstellen</span></a>
+    <nav aria-label="Dokumentation"><a href="../rest/">REST</a><a href="./" aria-current="page">WebSocket</a><a href="../specs/asyncapi.yaml" download>YAML ↓</a></nav>
+  </header>
+  <div class="viewer-note">WebSocket-Spielserver · <strong>Client → Server</strong> sind Befehle, <strong>Server → Client</strong> sind Ereignisse. Alle Nachrichten nutzen denselben Endpunkt <code>/game</code> und das Envelope <code>{"type":"…","data":{…}}</code>.</div>
+  <main id="asyncapi"><p class="loading" role="status">WebSocket-Dokumentation wird geladen …</p></main>
+  <script src="../assets/asyncapi.js"></script>
+  <script src="../assets/websocket.js"></script>
+</body>
+</html>

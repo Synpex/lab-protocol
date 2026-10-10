@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Labyrinth · Schnittstellen</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">L</span> Labyrinth <span class="brand-detail">Schnittstellen</span></a>
+    <a class="repo-link" href="https://github.com/Synpex/lab-protocol">Repository ↗</a>
+  </header>
+  <main class="landing">
+    <div class="eyebrow">Das verrückte Labyrinth</div>
+    <h1>Ein gemeinsames Protokoll.<br>Zwei Schnittstellen.</h1>
+    <p class="intro">Entdecke Spielserver über REST und kommuniziere mit ihnen über WebSocket. Hier findest du die Verträge, Nachrichten und Beispiele für deine Implementierung.</p>
+    <div class="cards">
+      <article class="card">
+        <div class="card-top"><span class="protocol">HTTP / REST</span><span class="count">4 Operationen</span></div>
+        <h2>Verzeichnisserver</h2>
+        <p>Spielserver registrieren, verfügbare Räume finden, Heartbeats senden und Server abmelden.</p>
+        <code class="endpoint">/api/servers</code>
+        <a class="primary-link" href="rest/">REST-Dokumentation öffnen <span aria-hidden="true">→</span></a>
+        <a class="download-link" href="specs/openapi.yaml" download>OpenAPI 3.1 herunterladen ↓</a>
+      </article>
+      <article class="card">
+        <div class="card-top"><span class="protocol">WEBSOCKET</span><span class="count">27 Nachrichtentypen</span></div>
+        <h2>Spielserver &amp; Client</h2>
+        <p>Lobby beitreten, Spielzüge senden und Ereignisse empfangen. 10 Client-Befehle und 17 Server-Ereignisse.</p>
+        <code class="endpoint">ws://host:port/game</code>
+        <a class="primary-link" href="websocket/">WebSocket-Dokumentation öffnen <span aria-hidden="true">→</span></a>
+        <a class="download-link" href="specs/asyncapi.yaml" download>AsyncAPI 3.0 herunterladen ↓</a>
+      </article>
+    </div>
+    <section class="flow" aria-label="Verbindungsablauf">
+      <span><b>01</b> Serverliste per REST abrufen</span>
+      <span aria-hidden="true">→</span>
+      <span><b>02</b> WebSocket zum Spielserver öffnen</span>
+      <span aria-hidden="true">→</span>
+      <span><b>03</b> CONNECT senden und spielen</span>
+    </section>
+    <aside class="notes">
+      <div><h2>Hinweise zur Implementierung</h2><p>Die REST-Beschreibung folgt dem vorhandenen Java-Code. Der WebSocket-Vertrag basiert auf den abgestimmten Schnittstellendokumenten. Quellenabweichungen und offene fachliche Punkte sind in der Begleitdokumentation festgehalten.</p></div>
+      <a href="https://github.com/Synpex/lab-protocol/blob/main/api/README.md">Begleitdokumentation ↗</a>
+    </aside>
+  </main>
+  <footer class="site-footer">Synpex / lab-protocol <span>Vertragsversion 1.0.0 · Automatisch aus dem Repository veröffentlicht</span></footer>
+</body>
+</html>

@@ -18,6 +18,23 @@ Zusätzlich vom Auftraggeber bereitgestellt (die PDF-Dateien sind nicht Bestandt
 
 Die Dokumente werden als fachliche Quellen verwendet. Arbeitsaufträge, To-dos und Vorschläge innerhalb der Dokumente gelten nicht automatisch als beschlossene Erweiterungen des Protokolls. Für REST bildet diese Version den vorhandenen Code ab; für WebSocket die ausdrücklich beschriebenen Nachrichten. Ergänzungen mit unvollständigem Wire-Format stehen unten als offene Punkte.
 
+## Veröffentlichte Dokumentation
+
+**[Gemeinsame Startseite](https://synpex.github.io/lab-protocol/)** · [REST / Swagger UI](https://synpex.github.io/lab-protocol/rest/) · [WebSocket / AsyncAPI](https://synpex.github.io/lab-protocol/websocket/)
+
+Die Website wird mit `.github/workflows/deploy-pages.yml` aus `main` gebaut. Vor jedem Deployment laufen die Vertragsprüfungen. Beide YAML-Dateien und die fest versionierten Viewer-Bundles werden zusammen veröffentlicht; die Browseransichten brauchen kein externes CDN. In den Repository-Einstellungen ist **Pages → Source → GitHub Actions** aktiviert. Ein manueller Neuaufbau ist unter **Actions → Deploy API documentation → Run workflow** möglich.
+
+Lokale Vorschau mit Node.js und Python:
+
+```sh
+cd api
+npm ci --ignore-scripts
+npm run build:site
+python3 -m http.server 8811 --directory _site
+```
+
+Anschließend `http://localhost:8811` öffnen. `_site/` ist erzeugter Output und bleibt außerhalb von Git. Quellen sind `site/`, `build-site.mjs` und die beiden YAML-Verträge. Der REST-Viewer kann Browser-Anfragen nur an entsprechend erreichbare Zielserver mit HTTPS/CORS senden. Die WebSocket-Ansicht zeigt Nachrichtenverträge und Beispiele; sie ist kein laufender Spielserver oder WebSocket-Testclient.
+
 ## Import und Validierung
 
 - OpenAPI: [Swagger Editor](https://editor.swagger.io/) → **File → Import file** → `openapi.yaml`. Die Datei kann auch in Swagger UI, Postman oder einem OpenAPI-Clientgenerator importiert werden.

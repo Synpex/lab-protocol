@@ -27,6 +27,8 @@ env JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw spring-boot:run
 
 ## Maschinenlesbare Schnittstellen
 
+Die Dokumentation ist unter **[synpex.github.io/lab-protocol](https://synpex.github.io/lab-protocol/)** verfügbar: [REST-Verzeichnisserver](https://synpex.github.io/lab-protocol/rest/) und [WebSocket-Spielserver](https://synpex.github.io/lab-protocol/websocket/). Änderungen an `api/` auf `main` werden nach erfolgreicher Prüfung automatisch veröffentlicht.
+
 Die [OpenAPI](api/openapi.yaml) beschreibt ausschließlich die REST-Schnittstelle des Verzeichnisservers. Die [AsyncAPI](api/asyncapi.yaml) beschreibt die WebSocket-Kommunikation zwischen Spielserver und Client unter `/game` mit allen 10 Client-Befehlen und 17 Server-Ereignissen.
 
 [Import, Beispiele, Validierung und dokumentierte Abweichungen](api/README.md) erklären die Nutzung durch andere Teams. Die OpenAPI entspricht dem vorhandenen Java-Code; die AsyncAPI basiert auf den bereitgestellten Schnittstellen-PDFs. Eine Spielserver-Implementierung ist in diesem Repository noch nicht enthalten.

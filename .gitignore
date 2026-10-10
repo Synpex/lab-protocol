@@ -34,3 +34,4 @@ build/
 
 ### API specification tooling ###
 api/node_modules/
+api/_site/

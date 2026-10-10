@@ -28,4 +28,4 @@ jobs:
           cache: npm
           cache-dependency-path: api/package-lock.json
       - run: npm ci --ignore-scripts
-      - run: npm run validate
+      - run: npm run build:site

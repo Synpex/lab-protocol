@@ -3,13 +3,21 @@
   "version": "1.0.0",
   "private": true,
   "description": "Validation of the Labyrinth OpenAPI and AsyncAPI contracts",
-  "engines": { "node": ">=22.19.0" },
-  "scripts": { "validate": "node validate.mjs", "test": "node validate.mjs" },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "validate": "node validate.mjs",
+    "test": "node validate.mjs",
+    "build:site": "npm run validate && node build-site.mjs"
+  },
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.1.0",
     "@asyncapi/parser": "3.6.3",
+    "@asyncapi/react-component": "3.2.1",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
+    "swagger-ui-dist": "5.33.1",
     "yaml": "2.9.1"
   }
 }
