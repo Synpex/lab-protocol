@@ -24,7 +24,7 @@ Die Dokumente werden als fachliche Quellen verwendet. Arbeitsaufträge, To-dos u
 
 **[Gemeinsame Startseite](https://synpex.github.io/lab-protocol/)** · [REST / Swagger UI](https://synpex.github.io/lab-protocol/rest/) · [WebSocket / AsyncAPI](https://synpex.github.io/lab-protocol/websocket/)
 
-Die Website wird mit `.github/workflows/deploy-pages.yml` aus `main` gebaut. Vor jedem Deployment laufen die Vertragsprüfungen. Beide YAML-Dateien und die fest versionierten Viewer-Bundles werden zusammen veröffentlicht; die Browseransichten brauchen kein externes CDN. In den Repository-Einstellungen ist **Pages → Source → GitHub Actions** aktiviert. Ein manueller Neuaufbau ist unter **Actions → Deploy API documentation → Run workflow** möglich.
+Die Website wird mit `.github/workflows/deploy-pages.yml` aus `main` gebaut. Vor jedem Deployment laufen die Vertragsprüfungen. Beide YAML-Dateien, Swagger UI und der WebSocket-Viewer werden zusammen veröffentlicht; die Browseransichten brauchen kein externes CDN. In den Repository-Einstellungen ist **Pages → Source → GitHub Actions** aktiviert. Ein manueller Neuaufbau ist unter **Actions → Deploy API documentation → Run workflow** möglich.
 
 Lokale Vorschau mit Node.js und Python:
 
@@ -35,7 +35,7 @@ npm run build:site
 python3 -m http.server 8811 --directory _site
 ```
 
-Anschließend `http://localhost:8811` öffnen. `_site/` ist erzeugter Output und bleibt außerhalb von Git. Quellen sind `site/`, `build-site.mjs` und die beiden YAML-Verträge. Der REST-Viewer kann Browser-Anfragen nur an entsprechend erreichbare Zielserver mit HTTPS/CORS senden. Die WebSocket-Ansicht zeigt Nachrichtenverträge und Beispiele; sie ist kein laufender Spielserver oder WebSocket-Testclient.
+Anschließend `http://localhost:8811` öffnen. `_site/` ist erzeugter Output und bleibt außerhalb von Git. Quellen sind `site/`, `build-site.mjs` und die beiden YAML-Verträge. Der REST-Viewer kann Browser-Anfragen nur an entsprechend erreichbare Zielserver mit HTTPS/CORS senden. Die WebSocket-Ansicht zeigt jede der 27 Nachrichten als eigenen aufklappbaren Eintrag im Swagger-Stil. Eine durchsuchbare Sidebar trennt Client-Befehle und Server-Ereignisse und öffnet die gewählte Nachricht. JSON-Beispiele (einschließlich aller Varianten) und das auflösbare Schema stehen in Tabs direkt im Eintrag; JSON lässt sich kopieren. Auf Mobilgeräten ist die Navigation einklappbar. Die Daten werden beim Build direkt aus `asyncapi.yaml` erzeugt; es gibt keine zweite manuell gepflegte Vertragsdatei. Die Ansicht ist kein laufender Spielserver oder WebSocket-Testclient. Asset-URLs und Vertragsdaten werden beim Build mit einer Inhaltsrevision versehen, damit veröffentlichte Änderungen nicht mit altem JavaScript/CSS vermischt werden.
 
 ## Import und Validierung
 

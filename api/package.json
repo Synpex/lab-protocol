@@ -14,7 +14,6 @@
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.1.0",
     "@asyncapi/parser": "3.6.3",
-    "@asyncapi/react-component": "3.2.1",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "swagger-ui-dist": "5.33.1",
