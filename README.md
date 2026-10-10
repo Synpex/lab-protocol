@@ -12,10 +12,15 @@ Voraussetzung ist ein installiertes JDK 25. Maven muss nicht installiert sein, d
 
 ```sh
 cd directory-server
+TEAM_1_API_KEY="$(openssl rand -hex 32)"
+TEAM_2_API_KEY="$(openssl rand -hex 32)"
+export DIRECTORY_API_KEYS="team-1:${TEAM_1_API_KEY},team-2:${TEAM_2_API_KEY}"
 ./mvnw spring-boot:run
 ```
 
-Unter Windows `mvnw.cmd spring-boot:run` verwenden.
+Die zwei Team-Namen sind Beispiele; für jedes beteiligte Team einen eigenen zufälligen Key konfigurieren und diesem Team vertraulich bereitstellen. `DIRECTORY_API_KEYS` enthält kommaseparierte `team:key`-Paare. Team-Namen dürfen Buchstaben, Ziffern, `_` und `-` enthalten; Keys müssen mindestens 32 Zeichen lang und ohne Whitespace sein. Doppelte Teams oder Keys werden abgelehnt. Ohne gültige Konfiguration startet der Verzeichnisserver nicht. In einem Deployment die Variable über dessen Secret-Konfiguration setzen; produktive Keys gehören nicht ins Repository.
+
+Unter Windows die Variable `DIRECTORY_API_KEYS` entsprechend setzen und `mvnw.cmd spring-boot:run` verwenden.
 
 Der Server läuft, sobald `Started DirectoryServerApplication` im Log erscheint, und ist dann unter `http://localhost:8080/api/servers` erreichbar. Beendet wird er mit `Strg+C`.
 
@@ -24,6 +29,14 @@ Falls der Build mit einer Meldung wie `release version 25 not supported` abbrich
 ```sh
 env JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw spring-boot:run
 ```
+
+### API-Keys und Besitzrechte
+
+Spielserver senden ihren Team-Key im Header `X-API-Key` bei **POST**, **PUT** und **DELETE**. Der registrierende Key ordnet den Eintrag einem Team zu. Nur dieses Team darf Heartbeats senden oder den Server abmelden. Clients können **GET /api/servers** weiterhin ohne Key aufrufen; die Spielserver-Keys gehören nicht in Clients. Die WebSocket-Verbindung zum Spielserver benötigt diese Verzeichnisserver-Keys nicht.
+
+Fehlender/ungültiger Key: **401** `INVALID_API_KEY`. Zugriff auf den Eintrag eines anderen Teams: **403** `SERVER_ACCESS_DENIED`. Produktiv HTTPS verwenden. Beim Wechsel eines Keys den Team-Namen beibehalten und die Konfiguration des Verzeichnisservers sowie der zugehörigen Spielserver aktualisieren. Nach einem Verzeichnisserver-Neustart müssen sich alle Spielserver erneut registrieren, da das Verzeichnis im Arbeitsspeicher liegt.
+
+Die [REST-Beispiele](api/README.md#verzeichnisserver-rest) zeigen den Header. Die CI prüft Authentifizierung und Team-Besitzrechte mit echten HTTP-Anfragen gegen den Java-Server.
 
 ## Maschinenlesbare Schnittstellen
 

@@ -5,18 +5,20 @@
 | [openapi.yaml](openapi.yaml) | Verzeichnisserver | HTTP/REST, OpenAPI 3.1 | Vorhandene Java-Implementierung |
 | [asyncapi.yaml](asyncapi.yaml) | Spielserver ↔ Client | WebSocket, AsyncAPI 3.0 | Vertrag aus den bereitgestellten Dokumenten; Spielserver noch nicht im Repo implementiert |
 
-Die Spezifikationen sind unabhängig importierbare YAML-Dateien mit ausschließlich internen `$ref`-Referenzen. `info.version: 1.0.0` versioniert diese Vertragsdateien; der Beispielwert `SERVER_INFO.serverVersion: 2.0.0` ist ein anderes, bislang nicht ausgehandeltes Metadatum.
+Die Spezifikationen sind unabhängig importierbare YAML-Dateien mit ausschließlich internen `$ref`-Referenzen. Die OpenAPI verwendet `info.version: 2.0.0` wegen der jetzt verpflichtenden Authentifizierung für Schreiboperationen; die AsyncAPI bleibt bei `1.0.0`. Diese Werte versionieren die Vertragsdateien; der Beispielwert `SERVER_INFO.serverVersion: 2.0.0` ist ein anderes, bislang nicht ausgehandeltes Metadatum.
 
 ## Quellen und Abgleich
 
 Abgeglichen am **10.10.2026** mit `main` bei Commit [`8b4f61f0357d5ed935c4e1b674baca168927e0c0`](https://github.com/Synpex/lab-protocol/tree/8b4f61f0357d5ed935c4e1b674baca168927e0c0): `ServerController`, Request-/Response-Records, `EServerStatus`, `ServerRegistry`, `ApiExceptionHandler` und README.
+
+**Erweiterung vom 10.10.2026:** Auf ausdrückliche Vorgabe des Auftraggebers wurden getrennte API-Keys je Team und Besitzrechte im Java-Verzeichnisserver ergänzt. Diese Vorgabe stammt aus dem Auftrag und ist keine aus den PDFs abgeleitete Anforderung. Die OpenAPI 2.0.0 bildet diese Erweiterung ab.
 
 Zusätzlich vom Auftraggeber bereitgestellt (die PDF-Dateien sind nicht Bestandteil des Repositories):
 
 - **Shared - Labyrinth Schnittstellen (1).pdf**, 46 Seiten: Architektur/Kernregeln S. 2–3, Sequenzdiagramme S. 4–8, REST S. 9–12, Client-Befehle S. 13–24, Server-Ereignisse S. 25–42, Fehler S. 43–44, Datentypen S. 45, Meetingprotokoll S. 46.
 - **Question Answer.pdf**, 11 Seiten: Ergänzungen, Antworten und noch offene Vorschläge. Relevant sind unter anderem Client-KI, Admin-Nachfolge, Zielfeld/kürzester Weg, Achievements und offene Lobby-/Timeout-Regeln.
 
-Die Dokumente werden als fachliche Quellen verwendet. Arbeitsaufträge, To-dos und Vorschläge innerhalb der Dokumente gelten nicht automatisch als beschlossene Erweiterungen des Protokolls. Für REST bildet diese Version den vorhandenen Code ab; für WebSocket die ausdrücklich beschriebenen Nachrichten. Ergänzungen mit unvollständigem Wire-Format stehen unten als offene Punkte.
+Die Dokumente werden als fachliche Quellen verwendet. Arbeitsaufträge, To-dos und Vorschläge innerhalb der Dokumente gelten nicht automatisch als beschlossene Erweiterungen des Protokolls. Für REST bildet diese Version den Java-Code einschließlich der beauftragten API-Key-Erweiterung ab; für WebSocket die ausdrücklich beschriebenen Nachrichten. Ergänzungen mit unvollständigem Wire-Format stehen unten als offene Punkte.
 
 ## Veröffentlichte Dokumentation
 
@@ -48,7 +50,7 @@ npm ci
 npm run validate
 ```
 
-Die Prüfung validiert beide Spezifikationsformate, interne Referenzen, alle REST-/WebSocket-Beispiele, Operationsrichtungen, vollständige Board-Beispiele sowie positive und negative Grenzfälle (z. B. gerade Spielfeldgröße, falsche Bonusparameter, fehlendes `maxPlayers`). Sie ersetzt keine Laufzeit- oder Konformitätsprüfung eines Spielservers. Der GitHub-Workflow führt sie bei Änderungen der API-Dateien aus.
+Die Prüfung validiert beide Spezifikationsformate, interne Referenzen, alle REST-/WebSocket-Beispiele, Operationsrichtungen, die REST-Authentifizierung, vollständige Board-Beispiele sowie positive und negative Grenzfälle (z. B. gerade Spielfeldgröße, falsche Bonusparameter, fehlendes `maxPlayers`). Sie ersetzt keine Laufzeit- oder Konformitätsprüfung eines Spielservers. Der GitHub-Workflow führt sie bei Änderungen der API-Dateien aus.
 
 ## Verzeichnisserver: REST
 
@@ -56,25 +58,50 @@ Lokale Basisadresse: `http://localhost:8080`. Produktive Hostadresse und Port m�
 
 | Methode | Pfad | Aufrufer | Erfolg | Dokumentierte Fehler |
 | --- | --- | --- | --- | --- |
-| POST | `/api/servers` | Spielserver | 201, `serverId` und `heartbeatIntervalSeconds` | 400 `INVALID_CONFIG` |
+| POST | `/api/servers` | Spielserver mit Team-Key | 201, `serverId` und `heartbeatIntervalSeconds` | 400 `INVALID_CONFIG`, 401 `INVALID_API_KEY` |
 | GET | `/api/servers?status=LOBBY` | Client | 200, Serverliste | Keine expliziten fachlichen Fehler |
-| PUT | `/api/servers/{id}/heartbeat` | Spielserver | 200, `acknowledged: true` | 400 `INVALID_CONFIG`, 404 `SERVER_NOT_FOUND` |
-| DELETE | `/api/servers/{id}` | Spielserver | 204, leerer Body | 404 `SERVER_NOT_FOUND` |
+| PUT | `/api/servers/{id}/heartbeat` | Besitzer-Team mit Key | 200, `acknowledged: true` | 400 `INVALID_CONFIG`, 401 `INVALID_API_KEY`, 403 `SERVER_ACCESS_DENIED`, 404 `SERVER_NOT_FOUND` |
+| DELETE | `/api/servers/{id}` | Besitzer-Team mit Key | 204, leerer Body | 401 `INVALID_API_KEY`, 403 `SERVER_ACCESS_DENIED`, 404 `SERVER_NOT_FOUND` |
+
+### Authentifizierung
+
+Der Verzeichnisserver-Betreiber konfiguriert `DIRECTORY_API_KEYS` als kommaseparierte `team:key`-Paare und verteilt jeden Key vertraulich an das jeweilige Team. Die [Startanleitung](../README.md#lokal-starten) zeigt die Erzeugung zufälliger Keys. Keine echten Keys in YAML-Dateien, GitHub Pages oder im Repository hinterlegen. Ein Team kann mehrere Spielserver mit demselben Team-Key registrieren. Team-Namen müssen eindeutig sein; verschiedene Teams benötigen verschiedene Keys. Konfiguration ohne Keys oder mit Keys unter 32 Zeichen wird beim Start abgelehnt.
+
+Spielserver senden **genau einen Header `X-API-Key`** bei Registrierung, Heartbeat und Abmeldung. Die Authentifizierung läuft vor dem Einlesen des Bodys. Fehlende, ungültige oder mehrfach gesendete Header ergeben `401 {"error":"INVALID_API_KEY"}` und `WWW-Authenticate: ApiKey realm="directory-server"`. Für fremde registrierte Server ergeben Heartbeat und Abmeldung `403 {"error":"SERVER_ACCESS_DENIED"}`. Ein nicht mehr registrierter Server ergibt mit gültigem Key 404.
+
+**GET /api/servers bleibt öffentlich**, auch mit Statusfilter. Die Antwort enthält keine Keys oder Team-Zuordnung. Spielclients benötigen keinen Verzeichnisserver-Key; die AsyncAPI und ihre Reconnect-Tokens bleiben davon unabhängig. Produktiv HTTPS verwenden. In Swagger UI über **Authorize** den Team-Key eingeben, bevor eine Schreiboperation mit **Try it out** ausgeführt wird.
+
+Für die folgenden Shell-Beispiele `TEAM_API_KEY` auf den vom Betreiber erhaltenen Key setzen. Dieser gehört in die Umgebungs-/Secret-Konfiguration des Spielservers. Beim Rotieren den Team-Namen beibehalten; nach einem Verzeichnisserver-Neustart ist wegen der Speicherung im Arbeitsspeicher eine erneute Registrierung nötig.
 
 Registrierung:
 
 ```sh
 curl -X POST http://localhost:8080/api/servers \
   -H 'Content-Type: application/json' \
+  -H "X-API-Key: ${TEAM_API_KEY}" \
   -d '{"name":"MCI Arena #1","host":"localhost","port":9000,"maxPlayers":4}'
 ```
 
-Heartbeat mit der tatsächlich erhaltenen `serverId`:
+Für `SERVER_ID` die tatsächlich erhaltene `serverId` verwenden. Heartbeat:
 
 ```sh
-curl -X PUT http://localhost:8080/api/servers/srv-44a1/heartbeat \
+curl -X PUT "http://localhost:8080/api/servers/${SERVER_ID}/heartbeat" \
   -H 'Content-Type: application/json' \
+  -H "X-API-Key: ${TEAM_API_KEY}" \
   -d '{"status":"LOBBY","currentPlayers":2,"maxPlayers":4}'
+```
+
+Abmeldung mit demselben Team-Key:
+
+```sh
+curl -X DELETE "http://localhost:8080/api/servers/${SERVER_ID}" \
+  -H "X-API-Key: ${TEAM_API_KEY}"
+```
+
+Öffentliche Discovery ohne Key:
+
+```sh
+curl 'http://localhost:8080/api/servers?status=LOBBY'
 ```
 
 Heartbeats alle 10 Sekunden. Einträge mit letztem Lebenszeichen älter als 30 Sekunden werden alle 5 Sekunden bereinigt. Bei 404 erneut registrieren. Der Server speichert sein Verzeichnis im Arbeitsspeicher; nach Neustart müssen sich Spielserver neu registrieren.
@@ -83,6 +110,7 @@ Heartbeats alle 10 Sekunden. Einträge mit letztem Lebenszeichen älter als 30 S
 
 | Thema | PDF | Aktueller Code / OpenAPI |
 | --- | --- | --- |
+| Authentifizierung | Kein Team-Key definiert | Beauftragte Erweiterung: `X-API-Key` bei POST/PUT/DELETE, Team-Besitzrechte; GET öffentlich |
 | Registrierung | `name`, `host`, `port` | Zusätzlich `maxPlayers` erforderlich (2–4) |
 | Heartbeat | `status`, `currentPlayers` | Zusätzlich `maxPlayers` (2–4) mitsenden; aktualisiert die Kapazität |
 | Status | `LOBBY`, `RUNNING` | Zusätzlich `UNKNOWN`; Status unmittelbar nach Registrierung |
@@ -140,4 +168,4 @@ Generierte Clients benötigen bei diesen offenen Fällen eine gemeinsame Abstimm
 
 ## Weiterentwicklung
 
-Änderungen an einem Nachrichtentyp müssen Payload-Schema, Beispiele und Beschreibung gemeinsam aktualisieren. Bei REST außerdem mit Controller/Records/Fehlerbehandlung vergleichen. Vor Commit `npm run validate` ausführen. Zustandsabhängige Regeln (Board-Matrix entspricht `rows`/`cols`, Koordinaten innerhalb des aktuellen Boards, Rückschiebeverbot, Erreichbarkeit, Belegung, Admin-/Turn-Rechte und insgesamt höchstens 24 Schatzkarten) müssen zusätzlich im Spielserver geprüft werden; reine JSON-Schemata können diese dynamischen Beziehungen nicht vollständig ausdrücken.
+Änderungen an einem Nachrichtentyp müssen Payload-Schema, Beispiele und Beschreibung gemeinsam aktualisieren. Bei REST außerdem mit Controller/Records/Fehlerbehandlung vergleichen. Vor Commit `npm run validate` ausführen. Bei Änderungen am Verzeichnisserver zusätzlich unter JDK 25 `cd directory-server && ./mvnw --batch-mode --no-transfer-progress test` ausführen; diese Tests benötigen keine produktiven Keys. Zustandsabhängige Regeln (Board-Matrix entspricht `rows`/`cols`, Koordinaten innerhalb des aktuellen Boards, Rückschiebeverbot, Erreichbarkeit, Belegung, Admin-/Turn-Rechte und insgesamt höchstens 24 Schatzkarten) müssen zusätzlich im Spielserver geprüft werden; reine JSON-Schemata können diese dynamischen Beziehungen nicht vollständig ausdrücken.

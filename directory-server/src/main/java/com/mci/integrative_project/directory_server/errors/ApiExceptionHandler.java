@@ -15,6 +15,12 @@ public class ApiExceptionHandler {
         return new ErrorResponse("INVALID_CONFIG");
     }
 
+    @ExceptionHandler(ServerAccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleAccessDenied() {
+        return new ErrorResponse("SERVER_ACCESS_DENIED");
+    }
+
     @ExceptionHandler(ServerNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleNotFound() {

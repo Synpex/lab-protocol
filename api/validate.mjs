@@ -65,6 +65,22 @@ const { document, diagnostics } = await new Parser().parse(YAML.stringify(asynca
 const errors = diagnostics.filter(diagnostic => diagnostic.severity === 0);
 assert.ok(document && errors.length === 0, JSON.stringify(errors, null, 2));
 
+// Discovery stays public; each write declares the team API key and its actual errors.
+assert.deepEqual(openapi.security, []);
+assert.deepEqual(openapi.paths['/api/servers'].get.security, []);
+assert.deepEqual(
+  Object.fromEntries(['type', 'in', 'name'].map(key => [key, openapi.components.securitySchemes.GameServerApiKey[key]])),
+  { type: 'apiKey', in: 'header', name: 'X-API-Key' },
+);
+for (const [path, method] of [
+  ['/api/servers', 'post'], ['/api/servers/{id}/heartbeat', 'put'], ['/api/servers/{id}', 'delete'],
+]) {
+  const operation = openapi.paths[path][method];
+  assert.deepEqual(operation.security, [{ GameServerApiKey: [] }]);
+  assert.equal(operation.responses['401'].$ref, '#/components/responses/InvalidApiKey');
+  if (method !== 'post') assert.equal(operation.responses['403'].$ref, '#/components/responses/ServerAccessDenied');
+}
+
 const checkRest = checker(openapi, Ajv2020, 'urn:lab:rest');
 let restExamples = 0;
 for (const [path, item] of Object.entries(openapi.paths)) {
@@ -147,4 +163,4 @@ checkGame(schema('Coordinates'), { row: -1, column: 0 }, 'negative coordinate', 
 checkGame(schema('UtcTimestamp'), '2026-09-15T20:00:00+02:00', 'timestamp must be UTC Z', false);
 console.log(`OpenAPI valid: 4 operations, ${restExamples} examples.`);
 console.log(`AsyncAPI valid: ${received} client commands, ${sent} server events, ${gameExamples} examples.`);
-console.log('References, message directions, full-state examples and boundary/negative cases passed.');
+console.log('References, message directions, team-key security, full-state examples and boundary/negative cases passed.');

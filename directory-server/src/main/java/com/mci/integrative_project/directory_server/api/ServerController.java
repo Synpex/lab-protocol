@@ -1,13 +1,13 @@
 package com.mci.integrative_project.directory_server.api;
 
 import java.util.List;
-import java.util.UUID;
 
-import com.mci.integrative_project.directory_server.errors.ServerNotFoundException;
 import com.mci.integrative_project.directory_server.logic.ServerRegistry;
 import com.mci.integrative_project.directory_server.model.GameState;
 
 import jakarta.validation.Valid;
+import com.mci.integrative_project.directory_server.security.DirectoryApiKeyFilter;
+import org.springframework.web.bind.annotation.RequestAttribute;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/servers")
@@ -33,10 +32,11 @@ public class ServerController {
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public RegisterServerResponse register(@RequestBody @Valid RegisterServerRequest request) {
-		String serverId = "srv-" + UUID.randomUUID().toString().substring(0, 4);
-		this.serverRegistry.register(serverId, request.name(), request.host(), request.port(), 0, request.maxPlayers());
-		return new RegisterServerResponse(serverId, 10);
+	public RegisterServerResponse register(@RequestBody @Valid RegisterServerRequest request,
+			@RequestAttribute(DirectoryApiKeyFilter.TEAM_ATTRIBUTE) String ownerTeam) {
+		GameState server = this.serverRegistry.register(ownerTeam, request.name(), request.host(),
+				request.port(), request.maxPlayers());
+		return new RegisterServerResponse(server.getServerId(), 10);
 	}
 
 	@GetMapping
@@ -58,20 +58,17 @@ public class ServerController {
 
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void deleteServer(@PathVariable String id) {
-		if (!this.serverRegistry.unregister(id)) {
-			throw new ServerNotFoundException();
-		}
+	public void deleteServer(@PathVariable String id,
+			@RequestAttribute(DirectoryApiKeyFilter.TEAM_ATTRIBUTE) String ownerTeam) {
+		this.serverRegistry.unregister(id, ownerTeam);
 	}
 
 	@PutMapping("/{id}/heartbeat")
 	@ResponseStatus(HttpStatus.OK)
 	public HeartbeatServerResponse heartbeat(@PathVariable String id,
-			@RequestBody @Valid HeartbeatServerRequest request) {
-		if (!this.serverRegistry.contains(id)) {
-			throw new ServerNotFoundException();
-		}
-		this.serverRegistry.heartbeat(id, request.status(), request.currentPlayers(),
+			@RequestBody @Valid HeartbeatServerRequest request,
+			@RequestAttribute(DirectoryApiKeyFilter.TEAM_ATTRIBUTE) String ownerTeam) {
+		this.serverRegistry.heartbeat(id, ownerTeam, request.status(), request.currentPlayers(),
 				request.maxPlayers());
 		return new HeartbeatServerResponse(true);
 	}

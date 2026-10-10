@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
   title: Das verrückte Labyrinth - Verzeichnisserver
-  version: 1.0.0
-  description: REST-Vertrag des vorhandenen Java-Verzeichnisservers. Abgeglichen mit main bei
-    8b4f61f0357d5ed935c4e1b674baca168927e0c0. Spielserver registrieren sich hier; Clients verbinden
-    sich anschließend per WebSocket direkt mit dem Spielserver unter /game (siehe asyncapi.yaml).
-    Keine Authentifizierung im aktuellen Verzeichnisserver. Unterschiede zu den PDFs sind in
-    README.md dokumentiert.
+  version: 2.0.0
+  description: REST-Vertrag des Java-Verzeichnisservers mit getrennten API-Keys je Team.
+    Registrierung, Heartbeat und Abmeldung benötigen den Header X-API-Key; jedes Team darf nur
+    eigene Spielserver verwalten. Die Serverliste ist öffentlich. Clients verbinden sich
+    anschließend per WebSocket direkt mit dem Spielserver unter /game (siehe asyncapi.yaml).
+    Produktiv HTTPS verwenden. Quellen und Erweiterungen gegenüber den PDFs sind in README.md dokumentiert.
   contact:
     name: Schnittstellenteam
     url: https://github.com/Synpex/lab-protocol
@@ -32,16 +32,19 @@ x-sources:
     - title: Question Answer.pdf
       pages: 11
   reviewedOn: 2026-10-10
+  extensions: API-Keys und Team-Besitzrechte gemäß ausdrücklicher Vorgabe des Auftraggebers am 10.10.2026.
 paths:
   /api/servers:
     post:
+      security:
+        - GameServerApiKey: []
       operationId: registerServer
       tags:
         - Servers
       summary: Spielserver registrieren
       description: Beim Hochfahren registrieren. Initialer Status UNKNOWN, currentPlayers 0. Die
         Registrierung gilt als erstes Lebenszeichen. Das Verzeichnis liegt nur im Arbeitsspeicher
-        und geht bei Neustart verloren.
+        und geht bei Neustart verloren. Der registrierende API-Key bestimmt das Besitzer-Team.
       requestBody:
         required: true
         content:
@@ -61,11 +64,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/RegisterServerResponse"
               example:
-                serverId: srv-44a1
+                serverId: srv-44a1c7b2-0000-4000-8000-000000000001
                 heartbeatIntervalSeconds: 10
         "400":
           $ref: "#/components/responses/InvalidConfig"
+        "401":
+          $ref: "#/components/responses/InvalidApiKey"
     get:
+      security: []
       operationId: listServers
       tags:
         - Servers
@@ -100,7 +106,7 @@ paths:
               examples:
                 lobby:
                   value:
-                    - serverId: srv-44a1
+                    - serverId: srv-44a1c7b2-0000-4000-8000-000000000001
                       name: "MCI Arena #1"
                       host: 192.168.1.100
                       port: 9000
@@ -113,20 +119,29 @@ paths:
     parameters:
       - $ref: "#/components/parameters/ServerId"
     delete:
+      security:
+        - GameServerApiKey: []
       operationId: unregisterServer
       tags:
         - Servers
       summary: Spielserver abmelden
-      description: Beim Herunterfahren abmelden. Erneute Abmeldung derselben Kennung ergibt 404.
+      description: Beim Herunterfahren mit einem API-Key des Besitzer-Teams abmelden. Erneute
+        Abmeldung derselben Kennung ergibt 404. Fremde registrierte Server ergeben 403.
       responses:
         "204":
           description: Abgemeldet; kein Response-Body.
+        "401":
+          $ref: "#/components/responses/InvalidApiKey"
+        "403":
+          $ref: "#/components/responses/ServerAccessDenied"
         "404":
           $ref: "#/components/responses/ServerNotFound"
   /api/servers/{id}/heartbeat:
     parameters:
       - $ref: "#/components/parameters/ServerId"
     put:
+      security:
+        - GameServerApiKey: []
       operationId: heartbeatServer
       tags:
         - Servers
@@ -134,7 +149,8 @@ paths:
       description: Alle 10 Sekunden senden. Server mit einem letzten Lebenszeichen älter als 30 Sekunden
         werden im Abstand von 5 Sekunden entfernt; der Timeout ist daher keine exakt bei Sekunde 30
         ausgeführte Löschung. Bei 404 erneut registrieren. status, currentPlayers und maxPlayers
-        immer senden. currentPlayers <= maxPlayers wird aktuell nicht geprüft.
+        immer senden. Nur das Besitzer-Team darf das Lebenszeichen senden; fremde registrierte
+        Server ergeben 403. currentPlayers <= maxPlayers wird aktuell nicht geprüft.
       requestBody:
         required: true
         content:
@@ -156,9 +172,21 @@ paths:
                 acknowledged: true
         "400":
           $ref: "#/components/responses/InvalidConfig"
+        "401":
+          $ref: "#/components/responses/InvalidApiKey"
+        "403":
+          $ref: "#/components/responses/ServerAccessDenied"
         "404":
           $ref: "#/components/responses/ServerNotFound"
 components:
+  securitySchemes:
+    GameServerApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Separater geheimer Key je Team, vom Verzeichnisserver-Betreiber verteilt.
+        Genau einmal als Header senden. Berechtigt zur Registrierung sowie zu Heartbeat und
+        Abmeldung eigener Server. Kein Key für GET /api/servers erforderlich; nicht an Spielclients verteilen.
   parameters:
     ServerId:
       name: id
@@ -167,8 +195,30 @@ components:
       description: serverId aus POST /api/servers.
       schema:
         $ref: "#/components/schemas/ServerId"
-      example: srv-44a1
+      example: srv-44a1c7b2-0000-4000-8000-000000000001
   responses:
+    InvalidApiKey:
+      description: X-API-Key fehlt, ist ungültig oder wurde mehrfach als Header gesendet.
+        Die Authentifizierung erfolgt vor dem Einlesen des Request-Bodys.
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+          example: 'ApiKey realm="directory-server"'
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InvalidApiKeyError"
+          example:
+            error: INVALID_API_KEY
+    ServerAccessDenied:
+      description: Gültiger API-Key, aber der registrierte Spielserver gehört einem anderen Team.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ServerAccessDeniedError"
+          example:
+            error: SERVER_ACCESS_DENIED
     InvalidConfig:
       description: JSON nicht lesbar oder Bean-Validation fehlgeschlagen.
       content:
@@ -188,9 +238,10 @@ components:
   schemas:
     ServerId:
       type: string
-      description: Opaque Kennung aus der Registrierung; keine UUID. Nicht selbst erzeugen.
+      description: Opaque Kennung aus der Registrierung (aktuell srv- plus vollständige UUID).
+        Nicht selbst erzeugen oder aus ihrer Länge auf Bedeutung schließen.
       examples:
-        - srv-44a1
+        - srv-44a1c7b2-0000-4000-8000-000000000001
     ServerStatus:
       type: string
       enum:
@@ -295,6 +346,22 @@ components:
           const: true
       required:
         - acknowledged
+    InvalidApiKeyError:
+      type: object
+      properties:
+        error:
+          type: string
+          const: INVALID_API_KEY
+      required:
+        - error
+    ServerAccessDeniedError:
+      type: object
+      properties:
+        error:
+          type: string
+          const: SERVER_ACCESS_DENIED
+      required:
+        - error
     InvalidConfigError:
       type: object
       properties:
