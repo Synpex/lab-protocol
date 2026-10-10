@@ -13,13 +13,18 @@ info:
 servers:
   - url: http://localhost:8080
     description: Lokaler Verzeichnisserver (Spring-Boot-Standardport)
-  - url: http://{host}:{port}
-    description: Eigener Verzeichnisserver; keine festgelegte öffentliche Adresse
+  - url: "{scheme}://{host}:{port}"
+    description: Eigener Verzeichnisserver; produktiv HTTPS, keine festgelegte öffentliche Adresse
     variables:
+      scheme:
+        default: https
+        enum:
+          - https
+          - http
       host:
         default: localhost
       port:
-        default: "8080"
+        default: "443"
 security: []
 tags:
   - name: Servers
