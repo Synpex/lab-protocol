@@ -24,3 +24,15 @@ Falls der Build mit einer Meldung wie `release version 25 not supported` abbrich
 ```sh
 env JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw spring-boot:run
 ```
+
+## Maschinenlesbare Schnittstellen
+
+Die [OpenAPI](api/openapi.yaml) beschreibt ausschließlich die REST-Schnittstelle des Verzeichnisservers. Die [AsyncAPI](api/asyncapi.yaml) beschreibt die WebSocket-Kommunikation zwischen Spielserver und Client unter `/game` mit allen 10 Client-Befehlen und 17 Server-Ereignissen.
+
+[Import, Beispiele, Validierung und dokumentierte Abweichungen](api/README.md) erklären die Nutzung durch andere Teams. Die OpenAPI entspricht dem vorhandenen Java-Code; die AsyncAPI basiert auf den bereitgestellten Schnittstellen-PDFs. Eine Spielserver-Implementierung ist in diesem Repository noch nicht enthalten.
+
+```sh
+cd api
+npm ci
+npm run validate
+```

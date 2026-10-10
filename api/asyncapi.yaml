@@ -1,0 +1,2124 @@
+asyncapi: 3.0.0
+id: urn:synpex:lab-protocol:game
+info:
+  title: Das verrückte Labyrinth - Spielserver WebSocket
+  version: 1.0.0
+  description: "Vertrag aus den bereitgestellten PDFs, aus Sicht des Spielservers: receive = Client
+    sendet Befehl, send = Server sendet Event. Genau eine persistente WebSocket-Verbindung unter
+    ws://host:port/game; JSON-Textnachrichten mit type/data-Envelope. Im Repository ist noch kein
+    Spielserver implementiert. Diese Version bildet die dokumentierten Nachrichten ab;
+    Abstimmungslücken sind in README.md und Beschreibungen benannt. Erweiterungsfelder sind erlaubt,
+    außer bei ausdrücklich leerem data/params."
+  contact:
+    name: Schnittstellenteam
+    url: https://github.com/Synpex/lab-protocol
+  tags:
+    - name: Game
+      description: Client-Befehle und Server-Ereignisse über dieselbe Verbindung
+defaultContentType: application/json
+servers:
+  gameServer:
+    host: "{host}:{port}"
+    protocol: ws
+    description: host und port aus GET /api/servers. Defaults sind Beispiele, kein bereitgestellter Server.
+    variables:
+      host:
+        default: localhost
+        description: Adresse des ausgewählten Spielservers
+      port:
+        default: "9000"
+        description: Port des ausgewählten Spielservers
+channels:
+  game:
+    address: /game
+    description: Ein WebSocket-Endpunkt für alle Nachrichtentypen. Auswahl anhand payload.type, kein
+      separater URL-Pfad pro Nachricht.
+    servers:
+      - $ref: "#/servers/gameServer"
+    bindings:
+      ws:
+        method: GET
+        bindingVersion: 0.1.0
+    messages:
+      CONNECT:
+        $ref: "#/components/messages/CONNECT"
+      DISCONNECT:
+        $ref: "#/components/messages/DISCONNECT"
+      START_GAME:
+        $ref: "#/components/messages/START_GAME"
+      ROTATE_SPARE_TILE:
+        $ref: "#/components/messages/ROTATE_SPARE_TILE"
+      PUSH_TILE:
+        $ref: "#/components/messages/PUSH_TILE"
+      MOVE_FIGURE:
+        $ref: "#/components/messages/MOVE_FIGURE"
+      PASS_MOVE:
+        $ref: "#/components/messages/PASS_MOVE"
+      USE_BONUS:
+        $ref: "#/components/messages/USE_BONUS"
+      SET_AI_MODE:
+        $ref: "#/components/messages/SET_AI_MODE"
+      REMATCH_REQUEST:
+        $ref: "#/components/messages/REMATCH_REQUEST"
+      SERVER_INFO:
+        $ref: "#/components/messages/SERVER_INFO"
+      CONNECT_ACK:
+        $ref: "#/components/messages/CONNECT_ACK"
+      LOBBY_STATE:
+        $ref: "#/components/messages/LOBBY_STATE"
+      GAME_STARTED:
+        $ref: "#/components/messages/GAME_STARTED"
+      NEXT_TREASURE:
+        $ref: "#/components/messages/NEXT_TREASURE"
+      GAME_STATE_UPDATE:
+        $ref: "#/components/messages/GAME_STATE_UPDATE"
+      BONUS_SPAWNED:
+        $ref: "#/components/messages/BONUS_SPAWNED"
+      BONUS_COLLECTED:
+        $ref: "#/components/messages/BONUS_COLLECTED"
+      BONUS_USED:
+        $ref: "#/components/messages/BONUS_USED"
+      TREASURE_FOUND:
+        $ref: "#/components/messages/TREASURE_FOUND"
+      PLAYER_UPDATED:
+        $ref: "#/components/messages/PLAYER_UPDATED"
+      ACHIEVEMENT_UNLOCKED:
+        $ref: "#/components/messages/ACHIEVEMENT_UNLOCKED"
+      TIMEOUT_WARNING:
+        $ref: "#/components/messages/TIMEOUT_WARNING"
+      PLAYER_DISCONNECTED:
+        $ref: "#/components/messages/PLAYER_DISCONNECTED"
+      GAME_OVER:
+        $ref: "#/components/messages/GAME_OVER"
+      REMATCH_STATUS:
+        $ref: "#/components/messages/REMATCH_STATUS"
+      ERROR:
+        $ref: "#/components/messages/ERROR"
+operations:
+  receiveConnect:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Lobby beitreten oder Session wiederaufnehmen
+    description: Innerhalb von 10 Sekunden nach WebSocket-Verbindung senden. Im laufenden Spiel nur mit
+      gültigem identifierToken. Antworten CONNECT_ACK und LOBBY_STATE; beim Reconnect danach
+      Full-State und NEXT_TREASURE. Fehler LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED.
+    messages:
+      - $ref: "#/channels/game/messages/CONNECT"
+  receiveDisconnect:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Sauber abmelden
+    description: Lobby oder Partie bewusst verlassen.
+    messages:
+      - $ref: "#/channels/game/messages/DISCONNECT"
+  receiveStartGame:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Partie starten und konfigurieren
+    description: Nur Admin, mindestens 2 Spieler. GAME_STARTED, Full-State und private NEXT_TREASURE
+      folgen. Fehler NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG.
+    messages:
+      - $ref: "#/channels/game/messages/START_GAME"
+  receiveRotateSpareTile:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Ersatzkachel um 90 Grad drehen
+    description: Im Uhrzeigersinn; nur aktiver Spieler in WAITING_FOR_PUSH. Aktualisiert entrances und
+      rotation. Fehler NOT_YOUR_TURN, INVALID_ACTION. Eigenständiger Befehl bleibt gemäß
+      API-Dokumentation erhalten.
+    messages:
+      - $ref: "#/channels/game/messages/ROTATE_SPARE_TILE"
+  receivePushTile:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Ersatzkachel einschieben
+    description: Nur WAITING_FOR_PUSH, aktiver Spieler. Regulär ungerade innere Indizes; direkten
+      Gegenschub des Vorzugs ablehnen. Figuren auf herausgeschobener Kachel per Wrap-Around auf
+      gegenüberliegende eingeschobene Kachel setzen. Richtung bezeichnet die Schieberichtung. Danach
+      WAITING_FOR_MOVE und berechnete reachablePositions. Fehler INVALID_PUSH, NOT_YOUR_TURN.
+    messages:
+      - $ref: "#/channels/game/messages/PUSH_TILE"
+  receiveMoveFigure:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Figur zu erreichbarem Ziel ziehen
+    description: Nur WAITING_FOR_MOVE. Ziel muss über offene Gänge erreichbar und frei sein. Über andere
+      Figuren darf hinweggezogen werden. Nur Zielfeld sammelt Schätze/Boni; Schritte gemäß Q&A über
+      kürzesten Weg. Danach nächster Spieler. Fehler TARGET_UNREACHABLE, POSITION_OCCUPIED.
+    messages:
+      - $ref: "#/channels/game/messages/MOVE_FIGURE"
+  receivePassMove:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Ohne Bewegung Zug beenden
+    description: Nur WAITING_FOR_MOVE; Figur bleibt stehen.
+    messages:
+      - $ref: "#/channels/game/messages/PASS_MOVE"
+  receiveUseBonus:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Bonus aus Inventar verwenden
+    description: Bonus muss verfügbar sein, einmalig verbrauchen. BEAM teleportiert auf freies Feld,
+      SWAP tauscht mit anderem Spieler, PUSH_FIXED schiebt gerade innere Reihe/Spalte, PUSH_TWICE
+      ermöglicht zweiten Schub. BONUS_USED und Full-State folgen. Fehler BONUS_NOT_AVAILABLE,
+      INVALID_BONUS_TARGET. BONUS ist eine Rubrik, kein zusätzlicher TurnState.
+    messages:
+      - $ref: "#/channels/game/messages/USE_BONUS"
+  receiveSetAiMode:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Client-KI aktivieren oder deaktivieren
+    description: KI rechnet vollständig auf dem Client. Server setzt/loggt isAiControlled und sendet
+      PLAYER_UPDATED; er führt selbst keine KI-Züge aus.
+    messages:
+      - $ref: "#/channels/game/messages/SET_AI_MODE"
+  receiveRematchRequest:
+    action: receive
+    channel:
+      $ref: "#/channels/game"
+    summary: Revanche-Zusage abgeben
+    description: Nach GAME_OVER. Vormatch-Spieler haben für 15 Sekunden Vorrang; dann öffnet sich die
+      Lobby für neue Spieler.
+    messages:
+      - $ref: "#/channels/game/messages/REMATCH_REQUEST"
+  sendServerInfo:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Empfangsbereitschaft und Serverzeit
+    description: Sofort nach erfolgreichem WebSocket-Handshake.
+    messages:
+      - $ref: "#/channels/game/messages/SERVER_INFO"
+  sendConnectAck:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Verbindung bestätigt
+    description: identifierToken im Client speichern; Reconnect-Fenster 30 Sekunden. Admin ist der
+      dienstälteste anwesende Spieler, nach Abgang/Timeout rückt der nächste nach.
+    messages:
+      - $ref: "#/channels/game/messages/CONNECT_ACK"
+  sendLobbyState:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Lobby-Teilnehmer und Startbereitschaft
+    description: Nach Join/Änderung an alle Lobby-Spieler.
+    messages:
+      - $ref: "#/channels/game/messages/LOBBY_STATE"
+  sendGameStarted:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Spielstart und Ersatzkachel
+    description: Unmittelbar danach vollständiges GAME_STATE_UPDATE und private NEXT_TREASURE. Diese
+      Nachricht allein ist kein vollständiger Board-Snapshot.
+    messages:
+      - $ref: "#/channels/game/messages/GAME_STARTED"
+  sendNextTreasure:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Nächste geheime Schatzkarte
+    description: Ausschließlich an den berechtigten Spieler; niemals broadcasten. Nach Start, nach
+      gefundenem Schatz und beim Reconnect.
+    messages:
+      - $ref: "#/channels/game/messages/NEXT_TREASURE"
+  sendGameStateUpdate:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Vollständigen Spielzustand übertragen
+    description: Nach jeder Aktion Full-State; keine Deltas. Beim Reconnect zusätzlich Unicast an den
+      wiederverbundenen Client. Geheime Schatzkarte und identifierToken gehören nicht in diesen
+      Broadcast.
+    messages:
+      - $ref: "#/channels/game/messages/GAME_STATE_UPDATE"
+  sendBonusSpawned:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Bonus auf Kachel erschienen
+    description: Pro Kachel höchstens ein Bonus oder ein Schatz; Bonus bleibt beim Schieben an seiner Kachel.
+    messages:
+      - $ref: "#/channels/game/messages/BONUS_SPAWNED"
+  sendBonusCollected:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Bonus eingesammelt
+    description: Bonus zum Spielerinventar hinzufügen.
+    messages:
+      - $ref: "#/channels/game/messages/BONUS_COLLECTED"
+  sendBonusUsed:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Bonus erfolgreich verbraucht
+    description: details ist nur für SWAP konkret dokumentiert; für übrige Boni keine verbindlichen
+      Feldnamen festgelegt.
+    messages:
+      - $ref: "#/channels/game/messages/BONUS_USED"
+  sendTreasureFound:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Aktuellen Schatz gefunden
+    description: Danach private NEXT_TREASURE; Punktwert im Beispiel ist keine verbindliche Punkte-Regel.
+    messages:
+      - $ref: "#/channels/game/messages/TREASURE_FOUND"
+  sendPlayerUpdated:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Spielerstatus geändert
+    description: Teilupdate für Client-KI oder Verbindungsstatus.
+    messages:
+      - $ref: "#/channels/game/messages/PLAYER_UPDATED"
+  sendAchievementUnlocked:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Achievement freigeschaltet
+    description: Achievements sind verpflichtend, Namen und Punktwerte dürfen serverabhängig sein.
+    messages:
+      - $ref: "#/channels/game/messages/ACHIEVEMENT_UNLOCKED"
+  sendTimeoutWarning:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Timeout-Countdown ankündigen
+    description: "Beispiel: 3 Sekunden Vorwarnung nach 30 Sekunden Inaktivität. Genaue Kopplung an
+      Zuglimit/Reconnect siehe offene Punkte in README."
+    messages:
+      - $ref: "#/channels/game/messages/TIMEOUT_WARNING"
+  sendPlayerDisconnected:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Spieler ausgeschieden
+    description: Nach freiwilligem Abgang oder Kick; Figur entfernen und ggf. nächsten Spieler aktivieren.
+    messages:
+      - $ref: "#/channels/game/messages/PLAYER_DISCONNECTED"
+  sendGameOver:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Spielende mit Rangliste und Kennzahlen
+    description: Alle Schätze und Rückkehr zur homePosition bilden die Siegbedingung; Ende beim ersten
+      Sieger oder Weiterspielen ist serverabhängig. Punktesystem und Gleichstand nicht festgelegt.
+    messages:
+      - $ref: "#/channels/game/messages/GAME_OVER"
+  sendRematchStatus:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Revanche-Zusagen und Lobby-Öffnung
+    description: Vormatch-Spieler erhalten 15 Sekunden Vorrang.
+    messages:
+      - $ref: "#/channels/game/messages/REMATCH_STATUS"
+  sendError:
+    action: send
+    channel:
+      $ref: "#/channels/game"
+    summary: Befehl abgewiesen
+    description: Nur an Verursacher; Spielzustand unverändert. Beliebig viele Wiederholungsversuche,
+      Zugzeit läuft weiter. correlationType korreliert nur den Befehlstyp, keine einzelne Anfrage.
+    messages:
+      - $ref: "#/channels/game/messages/ERROR"
+components:
+  messages:
+    CONNECT:
+      name: CONNECT
+      title: Lobby beitreten oder Session wiederaufnehmen
+      summary: Lobby beitreten oder Session wiederaufnehmen
+      description: Innerhalb von 10 Sekunden nach WebSocket-Verbindung senden. Im laufenden Spiel nur mit
+        gültigem identifierToken. Antworten CONNECT_ACK und LOBBY_STATE; beim Reconnect danach
+        Full-State und NEXT_TREASURE. Fehler LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/ConnectEnvelope"
+      examples:
+        - name: connect
+          summary: Lobby beitreten oder Session wiederaufnehmen
+          payload:
+            type: CONNECT
+            data:
+              username: Alice
+        - name: reconnect
+          payload:
+            type: CONNECT
+            data:
+              username: Alice
+              identifierToken: token-98f2-4bc1-912a
+      x-delivery: client to server
+      x-source-pages:
+        - 13
+    DISCONNECT:
+      name: DISCONNECT
+      title: Sauber abmelden
+      summary: Sauber abmelden
+      description: Lobby oder Partie bewusst verlassen.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/DisconnectEnvelope"
+      examples:
+        - name: disconnect
+          summary: Sauber abmelden
+          payload:
+            type: DISCONNECT
+            data: {}
+      x-delivery: client to server
+      x-source-pages:
+        - 14
+    START_GAME:
+      name: START_GAME
+      title: Partie starten und konfigurieren
+      summary: Partie starten und konfigurieren
+      description: Nur Admin, mindestens 2 Spieler. GAME_STARTED, Full-State und private NEXT_TREASURE
+        folgen. Fehler NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/StartGameEnvelope"
+      examples:
+        - name: start_game
+          summary: Partie starten und konfigurieren
+          payload:
+            type: START_GAME
+            data:
+              boardSize:
+                rows: 7
+                cols: 7
+              maxPlayers: 4
+              treasureCardCount: 6
+              gameDurationInSeconds: 1800
+              turnTimeoutInSeconds: 30
+              bonusSpawnInterval: 3
+      x-delivery: client to server
+      x-source-pages:
+        - 15
+    ROTATE_SPARE_TILE:
+      name: ROTATE_SPARE_TILE
+      title: Ersatzkachel um 90 Grad drehen
+      summary: Ersatzkachel um 90 Grad drehen
+      description: Im Uhrzeigersinn; nur aktiver Spieler in WAITING_FOR_PUSH. Aktualisiert entrances und
+        rotation. Fehler NOT_YOUR_TURN, INVALID_ACTION. Eigenständiger Befehl bleibt gemäß
+        API-Dokumentation erhalten.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/RotateSpareTileEnvelope"
+      examples:
+        - name: rotate_spare_tile
+          summary: Ersatzkachel um 90 Grad drehen
+          payload:
+            type: ROTATE_SPARE_TILE
+            data: {}
+      x-delivery: client to server
+      x-source-pages:
+        - 17
+    PUSH_TILE:
+      name: PUSH_TILE
+      title: Ersatzkachel einschieben
+      summary: Ersatzkachel einschieben
+      description: Nur WAITING_FOR_PUSH, aktiver Spieler. Regulär ungerade innere Indizes; direkten
+        Gegenschub des Vorzugs ablehnen. Figuren auf herausgeschobener Kachel per Wrap-Around auf
+        gegenüberliegende eingeschobene Kachel setzen. Richtung bezeichnet die Schieberichtung.
+        Danach WAITING_FOR_MOVE und berechnete reachablePositions. Fehler INVALID_PUSH,
+        NOT_YOUR_TURN.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/PushTileEnvelope"
+      examples:
+        - name: push_tile
+          summary: Ersatzkachel einschieben
+          payload:
+            type: PUSH_TILE
+            data:
+              rowOrColIndex: 1
+              direction: RIGHT
+      x-delivery: client to server
+      x-source-pages:
+        - 18
+    MOVE_FIGURE:
+      name: MOVE_FIGURE
+      title: Figur zu erreichbarem Ziel ziehen
+      summary: Figur zu erreichbarem Ziel ziehen
+      description: Nur WAITING_FOR_MOVE. Ziel muss über offene Gänge erreichbar und frei sein. Über andere
+        Figuren darf hinweggezogen werden. Nur Zielfeld sammelt Schätze/Boni; Schritte gemäß Q&A
+        über kürzesten Weg. Danach nächster Spieler. Fehler TARGET_UNREACHABLE, POSITION_OCCUPIED.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/MoveFigureEnvelope"
+      examples:
+        - name: move_figure
+          summary: Figur zu erreichbarem Ziel ziehen
+          payload:
+            type: MOVE_FIGURE
+            data:
+              targetCoordinates:
+                row: 3
+                column: 4
+      x-delivery: client to server
+      x-source-pages:
+        - 19
+    PASS_MOVE:
+      name: PASS_MOVE
+      title: Ohne Bewegung Zug beenden
+      summary: Ohne Bewegung Zug beenden
+      description: Nur WAITING_FOR_MOVE; Figur bleibt stehen.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/PassMoveEnvelope"
+      examples:
+        - name: pass_move
+          summary: Ohne Bewegung Zug beenden
+          payload:
+            type: PASS_MOVE
+            data: {}
+      x-delivery: client to server
+      x-source-pages:
+        - 20
+    USE_BONUS:
+      name: USE_BONUS
+      title: Bonus aus Inventar verwenden
+      summary: Bonus aus Inventar verwenden
+      description: Bonus muss verfügbar sein, einmalig verbrauchen. BEAM teleportiert auf freies Feld,
+        SWAP tauscht mit anderem Spieler, PUSH_FIXED schiebt gerade innere Reihe/Spalte, PUSH_TWICE
+        ermöglicht zweiten Schub. BONUS_USED und Full-State folgen. Fehler BONUS_NOT_AVAILABLE,
+        INVALID_BONUS_TARGET. BONUS ist eine Rubrik, kein zusätzlicher TurnState.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/UseBonusEnvelope"
+      examples:
+        - name: use_bonus
+          summary: Bonus aus Inventar verwenden
+          payload:
+            type: USE_BONUS
+            data:
+              bonusType: BEAM
+              params:
+                targetCoordinates:
+                  row: 5
+                  column: 2
+        - name: swap
+          payload:
+            type: USE_BONUS
+            data:
+              bonusType: SWAP
+              params:
+                targetPlayerId: p-102
+        - name: push_fixed
+          payload:
+            type: USE_BONUS
+            data:
+              bonusType: PUSH_FIXED
+              params:
+                rowOrColIndex: 2
+                direction: DOWN
+        - name: push_twice
+          payload:
+            type: USE_BONUS
+            data:
+              bonusType: PUSH_TWICE
+              params: {}
+      x-delivery: client to server
+      x-source-pages:
+        - 21
+    SET_AI_MODE:
+      name: SET_AI_MODE
+      title: Client-KI aktivieren oder deaktivieren
+      summary: Client-KI aktivieren oder deaktivieren
+      description: KI rechnet vollständig auf dem Client. Server setzt/loggt isAiControlled und sendet
+        PLAYER_UPDATED; er führt selbst keine KI-Züge aus.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/SetAiModeEnvelope"
+      examples:
+        - name: set_ai_mode
+          summary: Client-KI aktivieren oder deaktivieren
+          payload:
+            type: SET_AI_MODE
+            data:
+              enabled: true
+      x-delivery: client to server
+      x-source-pages:
+        - 23
+    REMATCH_REQUEST:
+      name: REMATCH_REQUEST
+      title: Revanche-Zusage abgeben
+      summary: Revanche-Zusage abgeben
+      description: Nach GAME_OVER. Vormatch-Spieler haben für 15 Sekunden Vorrang; dann öffnet sich die
+        Lobby für neue Spieler.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/RematchRequestEnvelope"
+      examples:
+        - name: rematch_request
+          summary: Revanche-Zusage abgeben
+          payload:
+            type: REMATCH_REQUEST
+            data:
+              ready: true
+      x-delivery: client to server
+      x-source-pages:
+        - 24
+    SERVER_INFO:
+      name: SERVER_INFO
+      title: Empfangsbereitschaft und Serverzeit
+      summary: Empfangsbereitschaft und Serverzeit
+      description: Sofort nach erfolgreichem WebSocket-Handshake.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/ServerInfoEnvelope"
+      examples:
+        - name: server_info
+          summary: Empfangsbereitschaft und Serverzeit
+          payload:
+            type: SERVER_INFO
+            data:
+              serverVersion: 2.0.0
+              serverTime: 2026-09-15T18:00:00Z
+              motd: Willkommen am MCI Labyrinth Server!
+      x-delivery: unicast
+      x-source-pages:
+        - 25
+    CONNECT_ACK:
+      name: CONNECT_ACK
+      title: Verbindung bestätigt
+      summary: Verbindung bestätigt
+      description: identifierToken im Client speichern; Reconnect-Fenster 30 Sekunden. Admin ist der
+        dienstälteste anwesende Spieler, nach Abgang/Timeout rückt der nächste nach.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/ConnectAckEnvelope"
+      examples:
+        - name: connect_ack
+          summary: Verbindung bestätigt
+          payload:
+            type: CONNECT_ACK
+            data:
+              playerId: p-101
+              username: Alice
+              playerColor: RED
+              isAdmin: true
+              identifierToken: token-98f2-4bc1-912a
+      x-delivery: unicast
+      x-source-pages:
+        - 26
+    LOBBY_STATE:
+      name: LOBBY_STATE
+      title: Lobby-Teilnehmer und Startbereitschaft
+      summary: Lobby-Teilnehmer und Startbereitschaft
+      description: Nach Join/Änderung an alle Lobby-Spieler.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/LobbyStateEnvelope"
+      examples:
+        - name: lobby_state
+          summary: Lobby-Teilnehmer und Startbereitschaft
+          payload:
+            type: LOBBY_STATE
+            data:
+              players:
+                - playerId: p-101
+                  username: Alice
+                  playerColor: RED
+                  isConnected: true
+                  isAiControlled: false
+                  isAdmin: true
+                - playerId: p-102
+                  username: Bob
+                  playerColor: BLUE
+                  isConnected: true
+                  isAiControlled: false
+                  isAdmin: false
+              canStart: true
+      x-delivery: broadcast
+      x-source-pages:
+        - 27
+    GAME_STARTED:
+      name: GAME_STARTED
+      title: Spielstart und Ersatzkachel
+      summary: Spielstart und Ersatzkachel
+      description: Unmittelbar danach vollständiges GAME_STATE_UPDATE und private NEXT_TREASURE. Diese
+        Nachricht allein ist kein vollständiger Board-Snapshot.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/GameStartedEnvelope"
+      examples:
+        - name: game_started
+          summary: Spielstart und Ersatzkachel
+          payload:
+            type: GAME_STARTED
+            data:
+              rows: 3
+              cols: 3
+              gameEndTime: 2026-09-15T19:00:00Z
+              spareTile:
+                entrances:
+                  - UP
+                  - RIGHT
+                rotation: 0
+                treasure: null
+                bonus: null
+                isFixed: false
+      x-delivery: broadcast
+      x-source-pages:
+        - 28
+    NEXT_TREASURE:
+      name: NEXT_TREASURE
+      title: Nächste geheime Schatzkarte
+      summary: Nächste geheime Schatzkarte
+      description: Ausschließlich an den berechtigten Spieler; niemals broadcasten. Nach Start, nach
+        gefundenem Schatz und beim Reconnect.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/NextTreasureEnvelope"
+      examples:
+        - name: next_treasure
+          summary: Nächste geheime Schatzkarte
+          payload:
+            type: NEXT_TREASURE
+            data:
+              treasureId: 4
+              name: Goldene Krone
+              remainingTreasureCount: 5
+      x-delivery: unicast
+      x-source-pages:
+        - 29
+    GAME_STATE_UPDATE:
+      name: GAME_STATE_UPDATE
+      title: Vollständigen Spielzustand übertragen
+      summary: Vollständigen Spielzustand übertragen
+      description: Nach jeder Aktion Full-State; keine Deltas. Beim Reconnect zusätzlich Unicast an den
+        wiederverbundenen Client. Geheime Schatzkarte und identifierToken gehören nicht in diesen
+        Broadcast.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/GameStateUpdateEnvelope"
+      examples:
+        - name: game_state_update
+          summary: Vollständigen Spielzustand übertragen
+          payload:
+            type: GAME_STATE_UPDATE
+            data:
+              board:
+                rows: 3
+                cols: 3
+                tiles:
+                  - - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: true
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: false
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: true
+                  - - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: false
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure:
+                        id: 4
+                        name: Goldene Krone
+                      bonus: null
+                      isFixed: false
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: false
+                  - - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: true
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: false
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: true
+                spareTile:
+                  entrances:
+                    - UP
+                    - RIGHT
+                  rotation: 0
+                  treasure: null
+                  bonus: null
+                  isFixed: false
+              players:
+                - playerId: p-101
+                  username: Alice
+                  playerColor: RED
+                  currentPosition:
+                    row: 0
+                    column: 0
+                  homePosition:
+                    row: 0
+                    column: 0
+                  remainingTreasureCount: 6
+                  availableBonuses: []
+                  isConnected: true
+                  isAiControlled: false
+                - playerId: p-102
+                  username: Bob
+                  playerColor: BLUE
+                  currentPosition:
+                    row: 2
+                    column: 2
+                  homePosition:
+                    row: 2
+                    column: 2
+                  remainingTreasureCount: 6
+                  availableBonuses: []
+                  isConnected: true
+                  isAiControlled: false
+              currentTurnInfo:
+                activePlayerId: p-101
+                turnState: WAITING_FOR_PUSH
+                turnEndTime: 2026-09-15T18:02:30Z
+                reachablePositions: []
+      x-delivery: broadcast; unicast on reconnect
+      x-source-pages:
+        - 30
+    BONUS_SPAWNED:
+      name: BONUS_SPAWNED
+      title: Bonus auf Kachel erschienen
+      summary: Bonus auf Kachel erschienen
+      description: Pro Kachel höchstens ein Bonus oder ein Schatz; Bonus bleibt beim Schieben an seiner Kachel.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/BonusSpawnedEnvelope"
+      examples:
+        - name: bonus_spawned
+          summary: Bonus auf Kachel erschienen
+          payload:
+            type: BONUS_SPAWNED
+            data:
+              bonusId: b-77
+              bonusType: BEAM
+              position:
+                row: 3
+                column: 5
+      x-delivery: broadcast
+      x-source-pages:
+        - 32
+    BONUS_COLLECTED:
+      name: BONUS_COLLECTED
+      title: Bonus eingesammelt
+      summary: Bonus eingesammelt
+      description: Bonus zum Spielerinventar hinzufügen.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/BonusCollectedEnvelope"
+      examples:
+        - name: bonus_collected
+          summary: Bonus eingesammelt
+          payload:
+            type: BONUS_COLLECTED
+            data:
+              playerId: p-101
+              bonusId: b-77
+              bonusType: BEAM
+      x-delivery: broadcast
+      x-source-pages:
+        - 33
+    BONUS_USED:
+      name: BONUS_USED
+      title: Bonus erfolgreich verbraucht
+      summary: Bonus erfolgreich verbraucht
+      description: details ist nur für SWAP konkret dokumentiert; für übrige Boni keine verbindlichen
+        Feldnamen festgelegt.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/BonusUsedEnvelope"
+      examples:
+        - name: bonus_used
+          summary: Bonus erfolgreich verbraucht
+          payload:
+            type: BONUS_USED
+            data:
+              playerId: p-101
+              bonusType: SWAP
+              details:
+                swappedWithPlayerId: p-102
+      x-delivery: broadcast
+      x-source-pages:
+        - 34
+    TREASURE_FOUND:
+      name: TREASURE_FOUND
+      title: Aktuellen Schatz gefunden
+      summary: Aktuellen Schatz gefunden
+      description: Danach private NEXT_TREASURE; Punktwert im Beispiel ist keine verbindliche Punkte-Regel.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/TreasureFoundEnvelope"
+      examples:
+        - name: treasure_found
+          summary: Aktuellen Schatz gefunden
+          payload:
+            type: TREASURE_FOUND
+            data:
+              playerId: p-101
+              treasureId: 4
+              treasureName: Goldene Krone
+              pointsAwarded: 20
+      x-delivery: broadcast
+      x-source-pages:
+        - 35
+    PLAYER_UPDATED:
+      name: PLAYER_UPDATED
+      title: Spielerstatus geändert
+      summary: Spielerstatus geändert
+      description: Teilupdate für Client-KI oder Verbindungsstatus.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/PlayerUpdatedEnvelope"
+      examples:
+        - name: player_updated
+          summary: Spielerstatus geändert
+          payload:
+            type: PLAYER_UPDATED
+            data:
+              playerId: p-101
+              isAiControlled: true
+              isConnected: true
+        - name: connection-lost
+          payload:
+            type: PLAYER_UPDATED
+            data:
+              playerId: p-101
+              isConnected: false
+      x-delivery: broadcast
+      x-source-pages:
+        - 36
+    ACHIEVEMENT_UNLOCKED:
+      name: ACHIEVEMENT_UNLOCKED
+      title: Achievement freigeschaltet
+      summary: Achievement freigeschaltet
+      description: Achievements sind verpflichtend, Namen und Punktwerte dürfen serverabhängig sein.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/AchievementUnlockedEnvelope"
+      examples:
+        - name: achievement_unlocked
+          summary: Achievement freigeschaltet
+          payload:
+            type: ACHIEVEMENT_UNLOCKED
+            data:
+              playerId: p-101
+              achievement: LAEUFER
+              description: Meiste überquerte Felder in der Partie
+              points: 15
+      x-delivery: broadcast
+      x-source-pages:
+        - 37
+    TIMEOUT_WARNING:
+      name: TIMEOUT_WARNING
+      title: Timeout-Countdown ankündigen
+      summary: Timeout-Countdown ankündigen
+      description: "Beispiel: 3 Sekunden Vorwarnung nach 30 Sekunden Inaktivität. Genaue Kopplung an
+        Zuglimit/Reconnect siehe offene Punkte in README."
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/TimeoutWarningEnvelope"
+      examples:
+        - name: timeout_warning
+          summary: Timeout-Countdown ankündigen
+          payload:
+            type: TIMEOUT_WARNING
+            data:
+              playerId: p-102
+              countdownSeconds: 3
+      x-delivery: broadcast
+      x-source-pages:
+        - 38
+    PLAYER_DISCONNECTED:
+      name: PLAYER_DISCONNECTED
+      title: Spieler ausgeschieden
+      summary: Spieler ausgeschieden
+      description: Nach freiwilligem Abgang oder Kick; Figur entfernen und ggf. nächsten Spieler aktivieren.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/PlayerDisconnectedEnvelope"
+      examples:
+        - name: player_disconnected
+          summary: Spieler ausgeschieden
+          payload:
+            type: PLAYER_DISCONNECTED
+            data:
+              playerId: p-102
+              reason: TIMEOUT
+      x-delivery: broadcast
+      x-source-pages:
+        - 39
+    GAME_OVER:
+      name: GAME_OVER
+      title: Spielende mit Rangliste und Kennzahlen
+      summary: Spielende mit Rangliste und Kennzahlen
+      description: Alle Schätze und Rückkehr zur homePosition bilden die Siegbedingung; Ende beim ersten
+        Sieger oder Weiterspielen ist serverabhängig. Punktesystem und Gleichstand nicht festgelegt.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/GameOverEnvelope"
+      examples:
+        - name: game_over
+          summary: Spielende mit Rangliste und Kennzahlen
+          payload:
+            type: GAME_OVER
+            data:
+              reason: HOME_REACHED_ALL_TREASURES
+              winnerPlayerId: p-101
+              ranking:
+                - rank: 1
+                  playerId: p-101
+                  username: Alice
+                  totalScore: 135
+                  stats:
+                    stepsTaken: 48
+                    tilesPushed: 16
+                    treasuresCollected: 6
+                    blockedPaths: 8
+                    achievements:
+                      - LAEUFER
+                      - SCHIEBER
+      x-delivery: broadcast
+      x-source-pages:
+        - 40
+    REMATCH_STATUS:
+      name: REMATCH_STATUS
+      title: Revanche-Zusagen und Lobby-Öffnung
+      summary: Revanche-Zusagen und Lobby-Öffnung
+      description: Vormatch-Spieler erhalten 15 Sekunden Vorrang.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/RematchStatusEnvelope"
+      examples:
+        - name: rematch_status
+          summary: Revanche-Zusagen und Lobby-Öffnung
+          payload:
+            type: REMATCH_STATUS
+            data:
+              readyPlayerIds:
+                - p-101
+              timeoutSecondsRemaining: 10
+              isOpenForNewPlayers: false
+      x-delivery: broadcast
+      x-source-pages:
+        - 41
+    ERROR:
+      name: ERROR
+      title: Befehl abgewiesen
+      summary: Befehl abgewiesen
+      description: Nur an Verursacher; Spielzustand unverändert. Beliebig viele Wiederholungsversuche,
+        Zugzeit läuft weiter. correlationType korreliert nur den Befehlstyp, keine einzelne Anfrage.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/ErrorEnvelope"
+      examples:
+        - name: error
+          summary: Befehl abgewiesen
+          payload:
+            type: ERROR
+            data:
+              errorCode: TARGET_UNREACHABLE
+              message: Zielfeld ist über offene Pfade nicht erreichbar.
+              correlationType: MOVE_FIGURE
+        - name: diagram-without-message
+          payload:
+            type: ERROR
+            data:
+              errorCode: NOT_YOUR_TURN
+              correlationType: PUSH_TILE
+      x-delivery: unicast
+      x-source-pages:
+        - 42
+  schemas:
+    Direction:
+      type: string
+      enum:
+        - UP
+        - DOWN
+        - LEFT
+        - RIGHT
+    PlayerColor:
+      type: string
+      enum:
+        - RED
+        - BLUE
+        - GREEN
+        - YELLOW
+    TurnState:
+      type: string
+      enum:
+        - WAITING_FOR_PUSH
+        - WAITING_FOR_MOVE
+    BonusType:
+      type: string
+      enum:
+        - BEAM
+        - SWAP
+        - PUSH_FIXED
+        - PUSH_TWICE
+    PlayerId:
+      type: string
+      description: Opaque Spielerkennung, z. B. p-101.
+    Username:
+      type: string
+      minLength: 1
+      maxLength: 50
+    UtcTimestamp:
+      type: string
+      format: date-time
+      pattern: Z$
+      description: ISO-8601 UTC mit Z; maßgeblich ist die Serverzeit.
+    Coordinates:
+      type: object
+      properties:
+        row:
+          type: integer
+          description: Zeile, 0 bis board.rows - 1.
+          minimum: 0
+        column:
+          type: integer
+          description: Spalte, 0 bis board.cols - 1.
+          minimum: 0
+      description: Ursprung oben links; dynamische Obergrenzen prüft der Spielserver.
+      required:
+        - row
+        - column
+    BoardDimension:
+      type: integer
+      description: Ungerade Ganzzahl >= 3; keine gemeinsame Obergrenze festgelegt.
+      not:
+        multipleOf: 2
+      minimum: 3
+    BoardSize:
+      type: object
+      properties:
+        rows:
+          $ref: "#/components/schemas/BoardDimension"
+        cols:
+          $ref: "#/components/schemas/BoardDimension"
+      required:
+        - rows
+        - cols
+    Treasure:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      description: Schatzkennungen und Namen sind nicht gruppenübergreifend aufgelistet; keine erfundene
+        ID-Range.
+      required:
+        - id
+        - name
+    Tile:
+      type: object
+      properties:
+        entrances:
+          type: array
+          items:
+            $ref: "#/components/schemas/Direction"
+          uniqueItems: true
+          description: Verbindliche offene Wege; rotation ist nur ein Darstellungswert.
+        rotation:
+          type: integer
+          minimum: 0
+          maximum: 3
+        treasure:
+          anyOf:
+            - $ref: "#/components/schemas/Treasure"
+            - type: "null"
+        bonus:
+          anyOf:
+            - $ref: "#/components/schemas/BonusType"
+            - type: "null"
+        isFixed:
+          type: boolean
+      description: Genau ein Schatz oder ein Bonus oder keines von beiden. Bonus und Schatz bleiben an der
+        Kachel, auch auf der Ersatzkachel.
+      not:
+        type: object
+        required:
+          - treasure
+          - bonus
+        properties:
+          treasure:
+            type: object
+          bonus:
+            type: string
+      required:
+        - entrances
+        - rotation
+        - treasure
+        - bonus
+        - isFixed
+    Push:
+      type: object
+      properties:
+        rowOrColIndex:
+          type: integer
+          description: Zeilenindex für LEFT/RIGHT; Spaltenindex für UP/DOWN.
+          minimum: 0
+        direction:
+          $ref: "#/components/schemas/Direction"
+      required:
+        - rowOrColIndex
+        - direction
+    Board:
+      type: object
+      properties:
+        rows:
+          $ref: "#/components/schemas/BoardDimension"
+        cols:
+          $ref: "#/components/schemas/BoardDimension"
+        tiles:
+          type: array
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/Tile"
+            minItems: 3
+          minItems: 3
+          description: Vollständige Matrix tiles[row][column]; genau rows Zeilen mit je cols Kacheln.
+        spareTile:
+          $ref: "#/components/schemas/Tile"
+        lastPush:
+          $ref: "#/components/schemas/Push"
+      description: lastPush optional, beim initialen Zustand weglassen. Matrix-Dimensionen sind dynamisch
+        und serverseitig zu prüfen.
+      required:
+        - rows
+        - cols
+        - tiles
+        - spareTile
+    LobbyPlayer:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        username:
+          $ref: "#/components/schemas/Username"
+        playerColor:
+          $ref: "#/components/schemas/PlayerColor"
+        isAdmin:
+          type: boolean
+        isAiControlled:
+          type: boolean
+        isConnected:
+          type: boolean
+      required:
+        - playerId
+        - username
+        - playerColor
+        - isAdmin
+        - isAiControlled
+        - isConnected
+    GamePlayer:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        username:
+          $ref: "#/components/schemas/Username"
+        playerColor:
+          $ref: "#/components/schemas/PlayerColor"
+        currentPosition:
+          $ref: "#/components/schemas/Coordinates"
+        homePosition:
+          $ref: "#/components/schemas/Coordinates"
+        remainingTreasureCount:
+          type: integer
+          minimum: 0
+          maximum: 24
+        availableBonuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/BonusType"
+          description: Inventar; Größe und FIFO/freie Auswahl sind in den Quellen widersprüchlich, siehe README.
+        isConnected:
+          type: boolean
+        isAiControlled:
+          type: boolean
+      required:
+        - playerId
+        - username
+        - playerColor
+        - currentPosition
+        - homePosition
+        - remainingTreasureCount
+        - availableBonuses
+        - isConnected
+        - isAiControlled
+    CurrentTurnInfo:
+      type: object
+      properties:
+        activePlayerId:
+          $ref: "#/components/schemas/PlayerId"
+        turnState:
+          $ref: "#/components/schemas/TurnState"
+        turnEndTime:
+          $ref: "#/components/schemas/UtcTimestamp"
+        reachablePositions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Coordinates"
+      description: Erreichbare Positionen werden serverseitig berechnet; im WAITING_FOR_PUSH-Beispiel
+        leere Liste.
+      required:
+        - activePlayerId
+        - turnState
+        - turnEndTime
+        - reachablePositions
+    GameStats:
+      type: object
+      properties:
+        stepsTaken:
+          type: integer
+          minimum: 0
+        tilesPushed:
+          type: integer
+          minimum: 0
+        treasuresCollected:
+          type: integer
+          minimum: 0
+          maximum: 24
+        blockedPaths:
+          type: integer
+          minimum: 0
+        achievements:
+          type: array
+          items:
+            type: string
+      description: Achievement-Namen und Punktwerte sind serverabhängig; die Quellen definieren kein
+        festes Enum.
+      required:
+        - stepsTaken
+        - tilesPushed
+        - treasuresCollected
+        - blockedPaths
+        - achievements
+    RankingEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        username:
+          $ref: "#/components/schemas/Username"
+        totalScore:
+          type: integer
+        stats:
+          $ref: "#/components/schemas/GameStats"
+      required:
+        - rank
+        - playerId
+        - username
+        - totalScore
+        - stats
+    ErrorCode:
+      type: string
+      enum:
+        - GENERAL_ERROR
+        - INVALID_COMMAND
+        - PLAYER_NOT_CONNECTED
+        - NOT_YOUR_TURN
+        - INVALID_TURN_PHASE
+        - INVALID_PUSH
+        - TARGET_UNREACHABLE
+        - POSITION_OCCUPIED
+        - REVERSING_PATH_FORBIDDEN
+        - BONUS_NOT_AVAILABLE
+        - INVALID_BONUS_TARGET
+        - LOBBY_FULL
+        - USERNAME_TAKEN
+        - GAME_ALREADY_STARTED
+        - NOT_ADMIN
+        - NOT_ENOUGH_PLAYERS
+        - INVALID_CONFIG
+        - INVALID_ACTION
+      description: Tabelle auf PDF S. 43-44 plus INVALID_CONFIG (START_GAME) und INVALID_ACTION
+        (ROTATE_SPARE_TILE) aus den Operationsbeschreibungen. Für letzteren besteht eine
+        Abstimmungslücke.
+    ConnectData:
+      type: object
+      properties:
+        username:
+          $ref: "#/components/schemas/Username"
+        identifierToken:
+          type: string
+          description: Optional nur beim Reconnect; Token aus CONNECT_ACK.
+      required:
+        - username
+    EmptyData:
+      type: object
+      properties: {}
+      additionalProperties: false
+    StartGameData:
+      type: object
+      properties:
+        boardSize:
+          $ref: "#/components/schemas/BoardSize"
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 4
+        treasureCardCount:
+          type: integer
+          default: 6
+          description: Pro Spieler, insgesamt <= 24. Produkt mit tatsächlicher Spieleranzahl serverseitig
+            prüfen.
+          minimum: 0
+          maximum: 24
+        gameDurationInSeconds:
+          type: integer
+          description: 0 = unbegrenzt; wire-Darstellung von gameEndTime dafür noch offen.
+          minimum: 0
+        turnTimeoutInSeconds:
+          type: integer
+          description: Zeitlimit pro Zug; Bedeutung von 0 und Default nicht festgelegt.
+          minimum: 0
+        bonusSpawnInterval:
+          type: integer
+          description: Rundenabstand; Bedeutung von 0 und Default nicht festgelegt.
+          minimum: 0
+      required:
+        - boardSize
+    MoveFigureData:
+      type: object
+      properties:
+        targetCoordinates:
+          $ref: "#/components/schemas/Coordinates"
+      required:
+        - targetCoordinates
+    UseBonusBeamData:
+      type: object
+      properties:
+        bonusType:
+          type: string
+          const: BEAM
+        params:
+          type: object
+          properties:
+            targetCoordinates:
+              $ref: "#/components/schemas/Coordinates"
+          required:
+            - targetCoordinates
+      required:
+        - bonusType
+        - params
+    UseBonusSwapData:
+      type: object
+      properties:
+        bonusType:
+          type: string
+          const: SWAP
+        params:
+          type: object
+          properties:
+            targetPlayerId:
+              $ref: "#/components/schemas/PlayerId"
+          required:
+            - targetPlayerId
+      required:
+        - bonusType
+        - params
+    UseBonusPushFixedData:
+      type: object
+      properties:
+        bonusType:
+          type: string
+          const: PUSH_FIXED
+        params:
+          type: object
+          properties:
+            rowOrColIndex:
+              type: integer
+              multipleOf: 2
+              description: Gerader innerer Index; nicht 0 und nicht letzter Randindex.
+              minimum: 2
+            direction:
+              $ref: "#/components/schemas/Direction"
+          required:
+            - rowOrColIndex
+            - direction
+      required:
+        - bonusType
+        - params
+    UseBonusPushTwiceData:
+      type: object
+      properties:
+        bonusType:
+          type: string
+          const: PUSH_TWICE
+        params:
+          $ref: "#/components/schemas/EmptyData"
+      required:
+        - bonusType
+        - params
+    UseBonusData:
+      oneOf:
+        - $ref: "#/components/schemas/UseBonusBeamData"
+        - $ref: "#/components/schemas/UseBonusSwapData"
+        - $ref: "#/components/schemas/UseBonusPushFixedData"
+        - $ref: "#/components/schemas/UseBonusPushTwiceData"
+      description: params hängt strikt vom bonusType ab. PUSH_TWICE setzt WAITING_FOR_MOVE auf
+        WAITING_FOR_PUSH; Phasen für übrige Boni noch nicht abschließend definiert.
+    SetAiModeData:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+    RematchRequestData:
+      type: object
+      properties:
+        ready:
+          type: boolean
+      required:
+        - ready
+    ServerInfoData:
+      type: object
+      properties:
+        serverVersion:
+          type: string
+          description: Metadatum; keine Versionsaushandlung definiert.
+        serverTime:
+          $ref: "#/components/schemas/UtcTimestamp"
+        motd:
+          type: string
+      required:
+        - serverVersion
+        - serverTime
+        - motd
+    ConnectAckData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        username:
+          $ref: "#/components/schemas/Username"
+        playerColor:
+          $ref: "#/components/schemas/PlayerColor"
+        isAdmin:
+          type: boolean
+        identifierToken:
+          type: string
+          description: Nur an diesen Client senden und für Reconnect speichern.
+      required:
+        - playerId
+        - username
+        - playerColor
+        - isAdmin
+        - identifierToken
+    LobbyStateData:
+      type: object
+      properties:
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/LobbyPlayer"
+          maxItems: 4
+        canStart:
+          type: boolean
+      required:
+        - players
+        - canStart
+    GameStartedData:
+      type: object
+      properties:
+        rows:
+          $ref: "#/components/schemas/BoardDimension"
+        cols:
+          $ref: "#/components/schemas/BoardDimension"
+        gameEndTime:
+          $ref: "#/components/schemas/UtcTimestamp"
+        spareTile:
+          $ref: "#/components/schemas/Tile"
+      description: Das konkrete PDF-Beispiel enthält keine board-Matrix. Unmittelbar anschließend zwingend
+        vollständiges GAME_STATE_UPDATE und private NEXT_TREASURE senden; README erläutert den
+        Widerspruch zum Begleittext.
+      required:
+        - rows
+        - cols
+        - gameEndTime
+        - spareTile
+    NextTreasureData:
+      type: object
+      properties:
+        treasureId:
+          type: integer
+        name:
+          type: string
+        remainingTreasureCount:
+          type: integer
+          minimum: 0
+          maximum: 24
+      description: Nur die jeweils nächste geheime Schatzkarte. Darstellung nach letzter Karte (Rückkehr
+        zur Ecke) noch offen.
+      required:
+        - treasureId
+        - name
+        - remainingTreasureCount
+    GameStateUpdateData:
+      type: object
+      properties:
+        board:
+          $ref: "#/components/schemas/Board"
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/GamePlayer"
+          maxItems: 4
+        currentTurnInfo:
+          $ref: "#/components/schemas/CurrentTurnInfo"
+      required:
+        - board
+        - players
+        - currentTurnInfo
+    BonusSpawnedData:
+      type: object
+      properties:
+        bonusId:
+          type: string
+        bonusType:
+          $ref: "#/components/schemas/BonusType"
+        position:
+          $ref: "#/components/schemas/Coordinates"
+      required:
+        - bonusId
+        - bonusType
+        - position
+    BonusCollectedData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        bonusId:
+          type: string
+        bonusType:
+          $ref: "#/components/schemas/BonusType"
+      required:
+        - playerId
+        - bonusId
+        - bonusType
+    BonusUsedData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        bonusType:
+          $ref: "#/components/schemas/BonusType"
+        details:
+          type: object
+          properties:
+            swappedWithPlayerId:
+              $ref: "#/components/schemas/PlayerId"
+          description: Nur SWAP-Beispiel spezifiziert. Details anderer Boni bleiben offen; Erweiterungsfelder
+            erlaubt.
+      required:
+        - playerId
+        - bonusType
+        - details
+    TreasureFoundData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        treasureId:
+          type: integer
+        treasureName:
+          type: string
+        pointsAwarded:
+          type: integer
+          description: Kein verbindliches Punktesystem vereinbart.
+      required:
+        - playerId
+        - treasureId
+        - treasureName
+        - pointsAwarded
+    PlayerUpdatedData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        isAiControlled:
+          type: boolean
+        isConnected:
+          type: boolean
+      anyOf:
+        - required:
+            - isAiControlled
+        - required:
+            - isConnected
+      description: Partielle Statusänderung; das Reconnect-Diagramm zeigt nur isConnected.
+      required:
+        - playerId
+    AchievementUnlockedData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        achievement:
+          type: string
+        description:
+          type: string
+        points:
+          type: integer
+      required:
+        - playerId
+        - achievement
+        - description
+        - points
+    TimeoutWarningData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        countdownSeconds:
+          type: integer
+          description: "Beispiel: 3. Reconnect-Fenster und Zugzeitlimit sind getrennt; genaue Kopplung offen."
+          minimum: 0
+      required:
+        - playerId
+        - countdownSeconds
+    PlayerDisconnectedData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        reason:
+          type: string
+          description: TIMEOUT ist dokumentiert; keine vollständige Liste von Gründen festgelegt.
+      required:
+        - playerId
+        - reason
+    GameOverData:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Beispiel HOME_REACHED_ALL_TREASURES; weitere Werte nicht standardisiert.
+        winnerPlayerId:
+          $ref: "#/components/schemas/PlayerId"
+        ranking:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankingEntry"
+      description: Ende nach allen Schätzen und Rückkehr zur Ecke. Ob weitere Spieler weiterspielen,
+        entscheidet der Server. Unentschieden/kein Sieger nicht abschließend spezifiziert.
+      required:
+        - reason
+        - winnerPlayerId
+        - ranking
+    RematchStatusData:
+      type: object
+      properties:
+        readyPlayerIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerId"
+          uniqueItems: true
+        timeoutSecondsRemaining:
+          type: integer
+          minimum: 0
+        isOpenForNewPlayers:
+          type: boolean
+      required:
+        - readyPlayerIds
+        - timeoutSecondsRemaining
+        - isOpenForNewPlayers
+    ErrorData:
+      type: object
+      properties:
+        errorCode:
+          $ref: "#/components/schemas/ErrorCode"
+        message:
+          type: string
+        correlationType:
+          type: string
+          description: Typ des auslösenden Befehls, keine eindeutige requestId. Auch unbekannte Befehle möglich.
+      description: message im JSON-Beispiel vorhanden, im Sequenzdiagramm teilweise weggelassen; daher optional.
+      required:
+        - errorCode
+        - correlationType
+    ConnectEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: CONNECT
+        data:
+          $ref: "#/components/schemas/ConnectData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    DisconnectEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: DISCONNECT
+        data:
+          $ref: "#/components/schemas/EmptyData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    StartGameEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: START_GAME
+        data:
+          $ref: "#/components/schemas/StartGameData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    RotateSpareTileEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: ROTATE_SPARE_TILE
+        data:
+          $ref: "#/components/schemas/EmptyData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    PushTileEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: PUSH_TILE
+        data:
+          $ref: "#/components/schemas/Push"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    MoveFigureEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: MOVE_FIGURE
+        data:
+          $ref: "#/components/schemas/MoveFigureData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    PassMoveEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: PASS_MOVE
+        data:
+          $ref: "#/components/schemas/EmptyData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    UseBonusEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: USE_BONUS
+        data:
+          $ref: "#/components/schemas/UseBonusData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    SetAiModeEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: SET_AI_MODE
+        data:
+          $ref: "#/components/schemas/SetAiModeData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    RematchRequestEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: REMATCH_REQUEST
+        data:
+          $ref: "#/components/schemas/RematchRequestData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    ServerInfoEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: SERVER_INFO
+        data:
+          $ref: "#/components/schemas/ServerInfoData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    ConnectAckEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: CONNECT_ACK
+        data:
+          $ref: "#/components/schemas/ConnectAckData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    LobbyStateEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: LOBBY_STATE
+        data:
+          $ref: "#/components/schemas/LobbyStateData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    GameStartedEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: GAME_STARTED
+        data:
+          $ref: "#/components/schemas/GameStartedData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    NextTreasureEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: NEXT_TREASURE
+        data:
+          $ref: "#/components/schemas/NextTreasureData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    GameStateUpdateEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: GAME_STATE_UPDATE
+        data:
+          $ref: "#/components/schemas/GameStateUpdateData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    BonusSpawnedEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: BONUS_SPAWNED
+        data:
+          $ref: "#/components/schemas/BonusSpawnedData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    BonusCollectedEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: BONUS_COLLECTED
+        data:
+          $ref: "#/components/schemas/BonusCollectedData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    BonusUsedEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: BONUS_USED
+        data:
+          $ref: "#/components/schemas/BonusUsedData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    TreasureFoundEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: TREASURE_FOUND
+        data:
+          $ref: "#/components/schemas/TreasureFoundData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    PlayerUpdatedEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: PLAYER_UPDATED
+        data:
+          $ref: "#/components/schemas/PlayerUpdatedData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    AchievementUnlockedEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: ACHIEVEMENT_UNLOCKED
+        data:
+          $ref: "#/components/schemas/AchievementUnlockedData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    TimeoutWarningEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: TIMEOUT_WARNING
+        data:
+          $ref: "#/components/schemas/TimeoutWarningData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    PlayerDisconnectedEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: PLAYER_DISCONNECTED
+        data:
+          $ref: "#/components/schemas/PlayerDisconnectedData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    GameOverEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: GAME_OVER
+        data:
+          $ref: "#/components/schemas/GameOverData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    RematchStatusEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: REMATCH_STATUS
+        data:
+          $ref: "#/components/schemas/RematchStatusData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+    ErrorEnvelope:
+      type: object
+      properties:
+        type:
+          type: string
+          const: ERROR
+        data:
+          $ref: "#/components/schemas/ErrorData"
+      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
+      required:
+        - type
+        - data
+x-sources:
+  repositoryCommit: 8b4f61f0357d5ed935c4e1b674baca168927e0c0
+  documents:
+    - title: Shared - Labyrinth Schnittstellen (1).pdf
+      pages: 46
+    - title: Question Answer.pdf
+      pages: 11
+  reviewedOn: 2026-10-10

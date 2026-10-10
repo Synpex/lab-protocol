@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### API specification tooling ###
+api/node_modules/

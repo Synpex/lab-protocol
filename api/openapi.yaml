@@ -1,0 +1,313 @@
+openapi: 3.1.0
+info:
+  title: Das verrückte Labyrinth - Verzeichnisserver
+  version: 1.0.0
+  description: REST-Vertrag des vorhandenen Java-Verzeichnisservers. Abgeglichen mit main bei
+    8b4f61f0357d5ed935c4e1b674baca168927e0c0. Spielserver registrieren sich hier; Clients verbinden
+    sich anschließend per WebSocket direkt mit dem Spielserver unter /game (siehe asyncapi.yaml).
+    Keine Authentifizierung im aktuellen Verzeichnisserver. Unterschiede zu den PDFs sind in
+    README.md dokumentiert.
+  contact:
+    name: Schnittstellenteam
+    url: https://github.com/Synpex/lab-protocol
+servers:
+  - url: http://localhost:8080
+    description: Lokaler Verzeichnisserver (Spring-Boot-Standardport)
+  - url: http://{host}:{port}
+    description: Eigener Verzeichnisserver; keine festgelegte öffentliche Adresse
+    variables:
+      host:
+        default: localhost
+      port:
+        default: "8080"
+security: []
+tags:
+  - name: Servers
+    description: Registrierung, Discovery und Lebenszeichen von Spielservern
+x-sources:
+  repositoryCommit: 8b4f61f0357d5ed935c4e1b674baca168927e0c0
+  documents:
+    - title: Shared - Labyrinth Schnittstellen (1).pdf
+      pages: 46
+    - title: Question Answer.pdf
+      pages: 11
+  reviewedOn: 2026-10-10
+paths:
+  /api/servers:
+    post:
+      operationId: registerServer
+      tags:
+        - Servers
+      summary: Spielserver registrieren
+      description: Beim Hochfahren registrieren. Initialer Status UNKNOWN, currentPlayers 0. Die
+        Registrierung gilt als erstes Lebenszeichen. Das Verzeichnis liegt nur im Arbeitsspeicher
+        und geht bei Neustart verloren.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterServerRequest"
+            example:
+              name: "MCI Arena #1"
+              host: 192.168.1.100
+              port: 9000
+              maxPlayers: 4
+      responses:
+        "201":
+          description: Registriert; serverId für Heartbeat und Abmeldung speichern.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterServerResponse"
+              example:
+                serverId: srv-44a1
+                heartbeatIntervalSeconds: 10
+        "400":
+          $ref: "#/components/responses/InvalidConfig"
+    get:
+      operationId: listServers
+      tags:
+        - Servers
+      summary: Aktive Spielserver auflisten
+      description: Ohne Filter alle registrierten Server, einschließlich UNKNOWN. Die Reihenfolge ist
+        nicht garantiert. Unbekannte oder falsch geschriebene status-Werte ergeben eine leere Liste
+        (kein 400).
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: "Exakter, case-sensitiver Vergleich. Übliche Werte: UNKNOWN, LOBBY, RUNNING. Frei als
+            String modelliert, weil der Server auch andere Filterwerte akzeptiert."
+          schema:
+            type: string
+          examples:
+            lobby:
+              value: LOBBY
+            running:
+              value: RUNNING
+            unknown:
+              value: UNKNOWN
+      responses:
+        "200":
+          description: Liste (gegebenenfalls leer). host und port ergeben ws://host:port/game.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GetServerResponse"
+              examples:
+                lobby:
+                  value:
+                    - serverId: srv-44a1
+                      name: "MCI Arena #1"
+                      host: 192.168.1.100
+                      port: 9000
+                      maxPlayers: 4
+                      currentPlayers: 2
+                      status: LOBBY
+                empty:
+                  value: []
+  /api/servers/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    delete:
+      operationId: unregisterServer
+      tags:
+        - Servers
+      summary: Spielserver abmelden
+      description: Beim Herunterfahren abmelden. Erneute Abmeldung derselben Kennung ergibt 404.
+      responses:
+        "204":
+          description: Abgemeldet; kein Response-Body.
+        "404":
+          $ref: "#/components/responses/ServerNotFound"
+  /api/servers/{id}/heartbeat:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    put:
+      operationId: heartbeatServer
+      tags:
+        - Servers
+      summary: Lebenszeichen und Spielerstand aktualisieren
+      description: Alle 10 Sekunden senden. Server mit einem letzten Lebenszeichen älter als 30 Sekunden
+        werden im Abstand von 5 Sekunden entfernt; der Timeout ist daher keine exakt bei Sekunde 30
+        ausgeführte Löschung. Bei 404 erneut registrieren. status, currentPlayers und maxPlayers
+        immer senden. currentPlayers <= maxPlayers wird aktuell nicht geprüft.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HeartbeatServerRequest"
+            example:
+              status: RUNNING
+              currentPlayers: 3
+              maxPlayers: 4
+      responses:
+        "200":
+          description: Lebenszeichen bestätigt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeartbeatServerResponse"
+              example:
+                acknowledged: true
+        "400":
+          $ref: "#/components/responses/InvalidConfig"
+        "404":
+          $ref: "#/components/responses/ServerNotFound"
+components:
+  parameters:
+    ServerId:
+      name: id
+      in: path
+      required: true
+      description: serverId aus POST /api/servers.
+      schema:
+        $ref: "#/components/schemas/ServerId"
+      example: srv-44a1
+  responses:
+    InvalidConfig:
+      description: JSON nicht lesbar oder Bean-Validation fehlgeschlagen.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InvalidConfigError"
+          example:
+            error: INVALID_CONFIG
+    ServerNotFound:
+      description: Server nicht registriert, abgemeldet oder bereits durch Timeout entfernt.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ServerNotFoundError"
+          example:
+            error: SERVER_NOT_FOUND
+  schemas:
+    ServerId:
+      type: string
+      description: Opaque Kennung aus der Registrierung; keine UUID. Nicht selbst erzeugen.
+      examples:
+        - srv-44a1
+    ServerStatus:
+      type: string
+      enum:
+        - UNKNOWN
+        - LOBBY
+        - RUNNING
+    RegisterServerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          pattern: \S
+          description: Nicht leer und nicht nur Whitespace.
+        host:
+          type: string
+          minLength: 1
+          pattern: \S
+          description: IP-Adresse oder Domain; aktuell nur auf nicht-leer geprüft.
+        port:
+          type: integer
+          description: Port des Spielservers. Die Implementierung akzeptiert auch 0.
+          minimum: 0
+          maximum: 65535
+        maxPlayers:
+          type: integer
+          description: Im aktuellen Repository Pflicht, anders als im PDF-Beispiel.
+          minimum: 2
+          maximum: 4
+      required:
+        - name
+        - host
+        - port
+        - maxPlayers
+    RegisterServerResponse:
+      type: object
+      properties:
+        serverId:
+          $ref: "#/components/schemas/ServerId"
+        heartbeatIntervalSeconds:
+          type: integer
+          description: Heartbeat alle 10 Sekunden senden.
+          minimum: 10
+          maximum: 10
+      required:
+        - serverId
+        - heartbeatIntervalSeconds
+    GetServerResponse:
+      type: object
+      properties:
+        serverId:
+          $ref: "#/components/schemas/ServerId"
+        name:
+          type: string
+        host:
+          type: string
+        port:
+          type: integer
+          minimum: 0
+          maximum: 65535
+        currentPlayers:
+          type: integer
+          minimum: 0
+          maximum: 4
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 4
+        status:
+          $ref: "#/components/schemas/ServerStatus"
+      required:
+        - serverId
+        - name
+        - host
+        - port
+        - currentPlayers
+        - maxPlayers
+        - status
+    HeartbeatServerRequest:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ServerStatus"
+        currentPlayers:
+          type: integer
+          minimum: 0
+          maximum: 4
+        maxPlayers:
+          type: integer
+          description: Bei jedem Heartbeat mitsenden; wird im Verzeichnis aktualisiert.
+          minimum: 2
+          maximum: 4
+      required:
+        - status
+        - currentPlayers
+        - maxPlayers
+    HeartbeatServerResponse:
+      type: object
+      properties:
+        acknowledged:
+          type: boolean
+          const: true
+      required:
+        - acknowledged
+    InvalidConfigError:
+      type: object
+      properties:
+        error:
+          type: string
+          const: INVALID_CONFIG
+      required:
+        - error
+    ServerNotFoundError:
+      type: object
+      properties:
+        error:
+          type: string
+          const: SERVER_NOT_FOUND
+      required:
+        - error
