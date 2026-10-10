@@ -30,7 +30,10 @@
     function schemaTree(input, name = 'Nachricht', required = false, depth = 0, ancestors = []) {
       const schema = input.$ref ? { ...resolve(input.$ref), ...input, $ref: undefined } : input;
       const node = el('div', 'schema-field'), heading = el('div', 'schema-field-heading');
-      const type = schema.type ?? (schema.oneOf ? 'oneOf' : schema.anyOf ? 'anyOf' : schema.allOf ? 'allOf' : 'object');
+      const constantType = Object.hasOwn(schema, 'const')
+        ? schema.const === null ? 'null' : Array.isArray(schema.const) ? 'array' : Number.isInteger(schema.const) ? 'integer' : typeof schema.const
+        : undefined;
+      const type = schema.type ?? constantType ?? (schema.oneOf ? 'oneOf' : schema.anyOf ? 'anyOf' : schema.allOf ? 'allOf' : 'object');
       heading.append(el('code', 'field-name', name), el('span', 'field-type', Array.isArray(type) ? type.join(' | ') : type));
       if (required) heading.append(el('span', 'field-required', 'Pflicht'));
       if (input.$ref) heading.append(el('span', 'field-reference', input.$ref.split('/').at(-1)));
