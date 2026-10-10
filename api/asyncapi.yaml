@@ -103,6 +103,7 @@ operations:
     description: Innerhalb von 10 Sekunden nach WebSocket-Verbindung senden. Im laufenden Spiel nur mit
       gültigem identifierToken. Antworten CONNECT_ACK und LOBBY_STATE; beim Reconnect danach
       Full-State und NEXT_TREASURE. Fehler LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED.
+    x-error-codes: [LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED]
     messages:
       - $ref: "#/channels/game/messages/CONNECT"
   receiveDisconnect:
@@ -120,6 +121,7 @@ operations:
     summary: Partie starten und konfigurieren
     description: Nur Admin, mindestens 2 Spieler. GAME_STARTED, Full-State und private NEXT_TREASURE
       folgen. Fehler NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG.
+    x-error-codes: [NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG]
     messages:
       - $ref: "#/channels/game/messages/START_GAME"
   receiveRotateSpareTile:
@@ -130,6 +132,7 @@ operations:
     description: Im Uhrzeigersinn; nur aktiver Spieler in WAITING_FOR_PUSH. Aktualisiert entrances und
       rotation. Fehler NOT_YOUR_TURN, INVALID_ACTION. Eigenständiger Befehl bleibt gemäß
       API-Dokumentation erhalten.
+    x-error-codes: [NOT_YOUR_TURN, INVALID_ACTION]
     messages:
       - $ref: "#/channels/game/messages/ROTATE_SPARE_TILE"
   receivePushTile:
@@ -141,6 +144,7 @@ operations:
       Gegenschub des Vorzugs ablehnen. Figuren auf herausgeschobener Kachel per Wrap-Around auf
       gegenüberliegende eingeschobene Kachel setzen. Richtung bezeichnet die Schieberichtung. Danach
       WAITING_FOR_MOVE und berechnete reachablePositions. Fehler INVALID_PUSH, NOT_YOUR_TURN.
+    x-error-codes: [INVALID_PUSH, NOT_YOUR_TURN]
     messages:
       - $ref: "#/channels/game/messages/PUSH_TILE"
   receiveMoveFigure:
@@ -151,6 +155,7 @@ operations:
     description: Nur WAITING_FOR_MOVE. Ziel muss über offene Gänge erreichbar und frei sein. Über andere
       Figuren darf hinweggezogen werden. Nur Zielfeld sammelt Schätze/Boni; Schritte gemäß Q&A über
       kürzesten Weg. Danach nächster Spieler. Fehler TARGET_UNREACHABLE, POSITION_OCCUPIED.
+    x-error-codes: [TARGET_UNREACHABLE, POSITION_OCCUPIED]
     messages:
       - $ref: "#/channels/game/messages/MOVE_FIGURE"
   receivePassMove:
@@ -170,6 +175,7 @@ operations:
       SWAP tauscht mit anderem Spieler, PUSH_FIXED schiebt gerade innere Reihe/Spalte, PUSH_TWICE
       ermöglicht zweiten Schub. BONUS_USED und Full-State folgen. Fehler BONUS_NOT_AVAILABLE,
       INVALID_BONUS_TARGET. BONUS ist eine Rubrik, kein zusätzlicher TurnState.
+    x-error-codes: [BONUS_NOT_AVAILABLE, INVALID_BONUS_TARGET]
     messages:
       - $ref: "#/channels/game/messages/USE_BONUS"
   receiveSetAiMode:
@@ -1384,6 +1390,43 @@ components:
         - NOT_ENOUGH_PLAYERS
         - INVALID_CONFIG
         - INVALID_ACTION
+      oneOf:
+        - const: GENERAL_ERROR
+          description: Unerwarteter Serverfehler, z. B. eine unbehandelte Exception.
+        - const: INVALID_COMMAND
+          description: Ungültiges JSON oder defektes Envelope, z. B. fehlendes type oder data.
+        - const: PLAYER_NOT_CONNECTED
+          description: Aktion vor CONNECT_ACK; der Spieler ist noch nicht verbunden.
+        - const: NOT_YOUR_TURN
+          description: Der Spieler ist laut activePlayerId nicht am Zug.
+        - const: INVALID_TURN_PHASE
+          description: Aktion in der falschen Phase, z. B. Bewegung, obwohl zunächst geschoben werden muss.
+        - const: INVALID_PUSH
+          description: Unerlaubter Schiebevorgang, z. B. gerade Reihe ohne Bonus oder direkter Gegenschub des Vorzugs.
+        - const: TARGET_UNREACHABLE
+          description: Kein offener Pfad zwischen Spielfigur und Zielfeld.
+        - const: POSITION_OCCUPIED
+          description: Ein anderer Spieler steht bereits auf dem Zielfeld.
+        - const: REVERSING_PATH_FORBIDDEN
+          description: Rückwärtslaufen auf dem Laufweg innerhalb desselben Zugs.
+        - const: BONUS_NOT_AVAILABLE
+          description: Der Bonus fehlt im Inventar, wurde bereits verbraucht oder nie eingesammelt.
+        - const: INVALID_BONUS_TARGET
+          description: Ungültiges Bonusziel, z. B. Beamen auf ein belegtes Feld oder Tauschen mit sich selbst.
+        - const: LOBBY_FULL
+          description: Die Lobby ist voll; bereits vier Spieler sind in der Partie.
+        - const: USERNAME_TAKEN
+          description: Der Benutzername ist in dieser Partie bereits vergeben.
+        - const: GAME_ALREADY_STARTED
+          description: Die Partie läuft bereits; ein Beitritt ohne gültiges identifierToken wird abgelehnt.
+        - const: NOT_ADMIN
+          description: Ein Spieler ohne Admin-Rechte versucht START_GAME aufzurufen.
+        - const: NOT_ENOUGH_PLAYERS
+          description: START_GAME wurde mit weniger als zwei Spielern aufgerufen.
+        - const: INVALID_CONFIG
+          description: Ungültige START_GAME-Konfiguration; dokumentierter Auslöser sind rows oder cols, die gerade oder kleiner als drei sind.
+        - const: INVALID_ACTION
+          description: Bei ROTATE_SPARE_TILE dokumentiert. Die genaue Bedeutung und Abgrenzung zu INVALID_TURN_PHASE ist noch abzustimmen.
       description: Tabelle auf PDF S. 43-44 plus INVALID_CONFIG (START_GAME) und INVALID_ACTION
         (ROTATE_SPARE_TILE) aus den Operationsbeschreibungen. Für letzteren besteht eine
         Abstimmungslücke.

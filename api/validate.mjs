@@ -103,6 +103,16 @@ for (const [path, item] of Object.entries(openapi.paths)) {
 }
 
 const checkGame = checker(asyncapi, Ajv, 'urn:lab:game');
+// Error meanings must cover the enum completely; command links cannot invent codes.
+const errorCode = asyncapi.components.schemas.ErrorCode;
+assert.deepEqual(errorCode.oneOf.map(item => item.const).sort(), [...errorCode.enum].sort());
+for (const item of errorCode.oneOf) assert.ok(item.description?.trim(), `Missing error meaning: ${item.const}`);
+for (const operation of Object.values(asyncapi.operations)) {
+  for (const code of operation['x-error-codes'] ?? []) {
+    assert.equal(operation.action, 'receive');
+    assert.ok(errorCode.enum.includes(code), `Unknown command error: ${code}`);
+  }
+}
 let gameExamples = 0;
 for (const [type, message] of Object.entries(asyncapi.components.messages)) {
   for (const example of message.examples) {

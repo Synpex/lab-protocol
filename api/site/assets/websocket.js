@@ -18,7 +18,14 @@
     const operations = Object.values(contract.operations).flatMap(operation => operation.messages.map(ref => ({
       operation, message: resolve(resolve(ref.$ref).$ref), direction: directions[operation.action], channel: resolve(operation.channel.$ref),
     })));
+    const errorCodes = contract.components.schemas.ErrorCode.oneOf;
     const anchor = entry => `message-${entry.message.name.toLowerCase()}`;
+    const errorAnchor = code => `error-${code.toLowerCase()}`;
+    function jumpLink(label, hash, className = '') {
+      const link = el('a', className, label); link.href = hash;
+      link.addEventListener('click', event => { event.preventDefault(); history.pushState(null, '', hash); fromHash(true); });
+      return link;
+    }
     // Expand references into a bounded field tree. Render source strings as text, never HTML.
     function schemaTree(input, name = 'Nachricht', required = false, depth = 0, ancestors = []) {
       const schema = input.$ref ? { ...resolve(input.$ref), ...input, $ref: undefined } : input;
@@ -51,14 +58,31 @@
       return node;
     }
     root.replaceChildren();
-    const layout = el('div', 'ws-layout'), sidebar = el('aside', 'ws-sidebar'); sidebar.setAttribute('aria-label', 'Nachrichtennavigation');
-    const navigation = el('details', 'ws-navigation'); navigation.open = !matchMedia('(max-width: 900px)').matches;
-    navigation.append(el('summary', 'navigation-toggle', 'Nachrichtenübersicht'));
+    const controls = el('div', 'ws-controls'), toggle = el('button', 'sidebar-toggle'); toggle.type = 'button';
+    toggle.setAttribute('aria-controls', 'ws-sidebar');
+    const pageNav = el('nav', 'ws-page-nav'); pageNav.setAttribute('aria-label', 'Dokumentation');
+    const restLink = el('a', '', 'REST API'); restLink.href = '../rest/';
+    const yamlLink = el('a', '', 'AsyncAPI YAML ↓'); yamlLink.href = '../specs/asyncapi.yaml'; yamlLink.setAttribute('download', '');
+    pageNav.append(restLink, yamlLink); controls.append(toggle, pageNav);
+    const layout = el('div', 'ws-layout'), sidebar = el('aside', 'ws-sidebar'); sidebar.id = 'ws-sidebar'; sidebar.setAttribute('aria-label', 'Nachrichtennavigation');
+    let collapsed = matchMedia('(max-width: 900px)').matches;
+    function setSidebar() {
+      sidebar.hidden = collapsed; layout.classList.toggle('sidebar-collapsed', collapsed);
+      toggle.textContent = collapsed ? '☰ Sidebar einblenden' : '‹ Sidebar ausblenden';
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+    }
+    toggle.addEventListener('click', () => {
+      collapsed = !collapsed; setSidebar();
+      if (!collapsed && matchMedia('(max-width: 900px)').matches) sidebar.scrollIntoView({ block: 'start' });
+    }); setSidebar();
+    const navigation = el('div', 'ws-navigation');
+    navigation.append(el('h2', 'navigation-heading', 'Nachrichtenübersicht'));
     const searchLabel = el('label', 'search-label', 'Nachrichten suchen'), search = el('input', 'message-search');
     search.type = 'search'; search.placeholder = 'z. B. CONNECT oder Schatz'; search.id = 'message-search'; searchLabel.htmlFor = search.id;
     const nav = el('nav', 'message-nav'); nav.setAttribute('aria-label', 'WebSocket-Nachrichten');
     const searchStatus = el('p', 'search-status'); searchStatus.setAttribute('role', 'status');
-    navigation.append(searchLabel, search, searchStatus, nav); sidebar.append(navigation);
+    const errorsLink = jumpLink(`Fehlercodes · ${errorCodes.length}`, '#error-codes', 'error-nav-link');
+    navigation.append(searchLabel, search, searchStatus, errorsLink, nav); sidebar.append(navigation);
     const content = el('div', 'ws-content'), intro = el('section', 'ws-intro'), title = el('h1', '', 'Spielserver & Client');
     title.append(el('span', 'contract-version', contract.info.version), el('span', 'contract-format', `AsyncAPI ${contract.asyncapi}`));
     intro.append(title, el('p', 'ws-intro-text', `${operations.length} klar getrennte Nachrichten über eine WebSocket-Verbindung. Öffne einen Eintrag für Ablauf, JSON-Beispiele und das vollständige Nachrichtenschema.`));
@@ -71,6 +95,7 @@
     intro.append(endpoint, source); content.append(intro);
     const rows = new Map(), links = new Map(), groups = [];
     function select(entry, scroll = false) {
+      errorsLink.removeAttribute('aria-current');
       for (const [name, row] of rows) row.open = name === entry.message.name;
       for (const [name, link] of links) {
         if (name === entry.message.name) link.setAttribute('aria-current', 'location');
@@ -97,6 +122,16 @@
         const delivery = { unicast: 'Unicast · privat', broadcast: 'Broadcast', 'broadcast and unicast on reconnect': 'Broadcast · beim Reconnect Unicast', 'client to server': 'Client-Befehl' }[message['x-delivery']] ?? message['x-delivery'];
         if (delivery) meta.append(el('span', 'delivery-label', delivery));
         body.append(meta, el('p', 'operation-description', operation.description ?? message.description ?? ''));
+        if (operation.action === 'receive' || message.name === 'ERROR') {
+          const errors = el('section', 'operation-errors');
+          errors.append(el('h3', '', operation.action === 'receive' ? 'Dokumentierte Fehler' : 'Fehlercodes und Bedeutungen'));
+          const codes = el('div', 'error-chips');
+          for (const code of operation['x-error-codes'] ?? []) codes.append(jumpLink(code, `#${errorAnchor(code)}`, 'error-chip'));
+          errors.append(codes, jumpLink(`Alle ${errorCodes.length} Fehlercodes →`, '#error-codes', 'all-errors-link'));
+          if (message.name === 'ERROR') errors.append(el('p', '', 'ERROR wird nur an den betroffenen Client gesendet. data.errorCode enthält den Code, data.correlationType den auslösenden Befehl. data.message ist ein optionaler Erklärungstext. Der Spielzustand bleibt unverändert.'));
+          else errors.append(el('p', '', 'Fehler werden als Server-Ereignis ERROR zurückgegeben. Die Zuordnung oben nennt die im jeweiligen Befehl ausdrücklich dokumentierten Codes; allgemeine Fehler stehen in der Übersicht.'));
+          body.append(errors);
+        }
         const tabs = el('div', 'message-tabs'); tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', `${message.name}: Beispiel oder Schema`);
         const exampleTab = el('button', 'message-tab', 'Example Value'), schemaTab = el('button', 'message-tab', 'Schema');
         const examplePanel = el('section', 'message-panel example-panel'), schemaPanel = el('section', 'message-panel schema-panel');
@@ -137,6 +172,22 @@
       }
       nav.append(navGroup); content.append(group);
     }
+    const catalog = el('section', 'error-catalog'); catalog.id = 'error-codes';
+    const catalogHeading = el('h2', 'group-heading', 'Fehlercodes'); catalogHeading.append(el('span', 'group-count', `${errorCodes.length} Codes · Server → Client`));
+    catalog.append(catalogHeading, el('p', 'error-intro', 'Alle Fehler werden über ERROR an den verursachenden Client gemeldet. Die Übersicht enthält die standardisierten Codes der Dokumente sowie die zwei zusätzlich in Befehlsbeschreibungen genannten Codes.'), jumpLink('ERROR: Nachricht und JSON-Beispiele öffnen →', '#message-error', 'error-message-link'));
+    for (const item of errorCodes) {
+      const card = el('article', 'error-code-card'); card.id = errorAnchor(item.const); card.tabIndex = -1;
+      const heading = el('h3'); heading.append(el('code', '', item.const));
+      const detail = el('div', 'error-code-detail'); detail.append(el('p', '', item.description));
+      const related = operations.filter(entry => (entry.operation['x-error-codes'] ?? []).includes(item.const));
+      if (related.length) {
+        const commands = el('div', 'error-related'); commands.append(el('span', '', 'Beim Befehl dokumentiert:'));
+        for (const entry of related) commands.append(jumpLink(entry.message.name, `#${anchor(entry)}`));
+        detail.append(commands);
+      }
+      card.append(heading, detail); catalog.append(card);
+    }
+    content.append(catalog);
     const empty = el('p', 'empty-results', 'Keine Nachricht gefunden. Versuche einen anderen Suchbegriff.'); empty.hidden = true; content.append(empty);
     search.addEventListener('input', () => {
       const term = search.value.trim().toLocaleLowerCase('de'); let matches = 0;
@@ -148,10 +199,16 @@
       searchStatus.textContent = `${matches} von ${operations.length} Nachrichten`; empty.hidden = matches !== 0;
     });
     searchStatus.textContent = `${operations.length} Nachrichten · ${operations.filter(entry => entry.operation.action === 'receive').length} Befehle / ${operations.filter(entry => entry.operation.action === 'send').length} Ereignisse`;
-    layout.append(sidebar, content); root.append(layout);
+    layout.append(sidebar, content); root.append(controls, layout);
     function fromHash(scroll) {
+      for (const card of catalog.querySelectorAll('.error-code-card')) card.classList.toggle('selected-error', `#${card.id}` === location.hash);
       const entry = operations.find(item => `#${anchor(item)}` === location.hash);
       if (entry) { search.value = ''; search.dispatchEvent(new Event('input')); select(entry, scroll); }
+      else if (location.hash === '#error-codes' || errorCodes.some(item => `#${errorAnchor(item.const)}` === location.hash)) {
+        for (const link of links.values()) link.removeAttribute('aria-current');
+        errorsLink.setAttribute('aria-current', 'location');
+        if (scroll) document.getElementById(location.hash.slice(1)).scrollIntoView({ block: 'start' });
+      }
       else if (!location.hash) select(operations[0], false);
     }
     window.addEventListener('hashchange', () => fromHash(true)); fromHash(Boolean(location.hash));
