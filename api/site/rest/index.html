@@ -1,20 +1,8 @@
 <!doctype html>
 <html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Verzeichnisserver · Labyrinth</title>
-  <link rel="stylesheet" href="../assets/swagger-ui.css">
-  <link rel="stylesheet" href="../assets/site.css">
-</head>
-<body>
-  <header class="site-header">
-    <a class="brand" href="../"><span class="brand-mark" aria-hidden="true">L</span> Labyrinth <span class="brand-detail">Schnittstellen</span></a>
-    <nav aria-label="Dokumentation"><a href="./" aria-current="page">REST</a><a href="../websocket/">WebSocket</a><a href="../specs/openapi.yaml" download>YAML ↓</a></nav>
-  </header>
-  <div class="viewer-note">REST-Verzeichnisserver · POST, PUT und DELETE benötigen deinen Team-Key über „Authorize“. GET ist öffentlich. Browser-Aufrufe über „Try it out“ benötigen einen erreichbaren Zielserver mit HTTPS und passenden CORS-Freigaben. Die lokalen HTTP-Adressen dienen als Beispiele.</div>
-  <main id="swagger-ui"><p class="loading" role="status">REST-Dokumentation wird geladen …</p></main>
-  <script src="../assets/swagger-ui-bundle.js"></script>
-  <script src="../assets/rest.js"></script>
-</body>
-</html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verzeichnisserver · Labyrinth</title><link rel="stylesheet" href="../assets/swagger-ui.css"><link rel="stylesheet" href="../assets/site.css"><link rel="stylesheet" href="../assets/rest.css"><script src="../assets/site.js" defer></script></head>
+<body><a class="skip-link" href="#content">Zum Inhalt</a><div class="docs-shell">
+<aside class="docs-index" id="docs-index" aria-label="Dokumentationsindex"><div data-brand="rest" data-prefix="../"></div><h2 class="index-section-title">Operationen</h2><nav class="index-links rest-index" aria-label="REST-Operationen"><a href="#/Servers/listServers"><span class="method-label get">GET</span> Server finden</a><a href="#/Servers/registerServer"><span class="method-label post">POST</span> Server registrieren</a><a href="#/Servers/heartbeatServer"><span class="method-label put">PUT</span> Heartbeat senden</a><a href="#/Servers/unregisterServer"><span class="method-label delete">DELETE</span> Server abmelden</a></nav><h2 class="index-section-title">Vertrag</h2><div class="index-links"><a href="../specs/openapi.yaml" download>OpenAPI 3.1 herunterladen</a><a href="https://github.com/Synpex/lab-protocol/blob/main/api/README.md#verzeichnisserver-rest">Authentifizierung &amp; Beispiele</a></div><div class="index-footer">Verzeichnisserver<br>REST · Version 2.0.0</div></aside>
+<div class="docs-main"><header class="docs-toolbar"><div class="toolbar-start"><button class="index-toggle" data-index-toggle type="button" aria-controls="docs-index"><i data-icon="menu"></i><span>Index schließen</span></button><span class="toolbar-context">Referenz / REST</span></div><div class="toolbar-actions"><a href="../specs/openapi.yaml" download>YAML <i data-icon="download"></i></a><a href="https://github.com/Synpex/lab-protocol" aria-label="Repository auf GitHub öffnen"><span class="repository-label">Repository</span><i data-icon="link"></i></a></div></header>
+<main class="document rest-document" id="content"><h1>Verzeichnisserver <span class="version-label">2.0.0</span></h1><p class="lead">Der Einstieg ins Spiel. Registriere Spielserver, halte ihre Verfügbarkeit aktuell und liefere Clients die passende Verbindung.</p><div class="rest-auth-note"><strong>Öffentlich lesen. Mit Team-Key schreiben.</strong><p><code>GET /api/servers</code> ist öffentlich. Für POST, PUT und DELETE gibst du über <strong>Authorize</strong> deinen Team-Key als <code>X-API-Key</code> ein. Jedes Team verwaltet nur eigene Server.</p></div><div class="rest-test-note">Für „Try it out“ muss der gewählte Zielserver im Browser erreichbar sein. HTTPS und passende CORS-Freigaben sind erforderlich; localhost-Adressen sind Beispiele.</div><div id="swagger-ui"><p class="loading" role="status">REST-Referenz wird geladen …</p></div><footer class="document-footer"><a href="../websocket/">Weiter zur WebSocket-Referenz</a><span>OpenAPI 3.1 · Vertrag 2.0.0</span></footer></main></div></div>
+<script src="../assets/swagger-ui-bundle.js"></script><script src="../assets/rest.js"></script></body></html>

@@ -1,0 +1,454 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-25T16:05:47.823844+00:00",
+  "title": "Design System: Labyrinth · Protokoll-Handbuch",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0420 243.23)",
+          "oklch(26% 0.0420 243.23)",
+          "oklch(38% 0.0420 243.23)",
+          "oklch(49% 0.0420 243.23)",
+          "oklch(61% 0.0420 243.23)",
+          "oklch(72% 0.0420 243.23)",
+          "oklch(84% 0.0420 243.23)",
+          "oklch(95% 0.0420 243.23)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0338 245.39)",
+          "oklch(26% 0.0338 245.39)",
+          "oklch(38% 0.0338 245.39)",
+          "oklch(49% 0.0338 245.39)",
+          "oklch(61% 0.0338 245.39)",
+          "oklch(72% 0.0338 245.39)",
+          "oklch(84% 0.0338 245.39)",
+          "oklch(95% 0.0338 245.39)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "tonalRamp": [
+          "oklch(15% 0.0102 238.52)",
+          "oklch(26% 0.0102 238.52)",
+          "oklch(38% 0.0102 238.52)",
+          "oklch(49% 0.0102 238.52)",
+          "oklch(61% 0.0102 238.52)",
+          "oklch(72% 0.0102 238.52)",
+          "oklch(84% 0.0102 238.52)",
+          "oklch(95% 0.0102 238.52)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(26% 0.0000 89.88)",
+          "oklch(38% 0.0000 89.88)",
+          "oklch(49% 0.0000 89.88)",
+          "oklch(61% 0.0000 89.88)",
+          "oklch(72% 0.0000 89.88)",
+          "oklch(84% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "wash": {
+        "role": "neutral",
+        "displayName": "Wash",
+        "tonalRamp": [
+          "oklch(15% 0.0042 236.50)",
+          "oklch(26% 0.0042 236.50)",
+          "oklch(38% 0.0042 236.50)",
+          "oklch(49% 0.0042 236.50)",
+          "oklch(61% 0.0042 236.50)",
+          "oklch(72% 0.0042 236.50)",
+          "oklch(84% 0.0042 236.50)",
+          "oklch(95% 0.0042 236.50)"
+        ]
+      },
+      "navy": {
+        "role": "primary",
+        "displayName": "Navy",
+        "tonalRamp": [
+          "oklch(15% 0.0420 243.23)",
+          "oklch(26% 0.0420 243.23)",
+          "oklch(38% 0.0420 243.23)",
+          "oklch(49% 0.0420 243.23)",
+          "oklch(61% 0.0420 243.23)",
+          "oklch(72% 0.0420 243.23)",
+          "oklch(84% 0.0420 243.23)",
+          "oklch(95% 0.0420 243.23)"
+        ]
+      },
+      "nav-muted": {
+        "role": "neutral",
+        "displayName": "Nav Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0226 239.49)",
+          "oklch(26% 0.0226 239.49)",
+          "oklch(38% 0.0226 239.49)",
+          "oklch(49% 0.0226 239.49)",
+          "oklch(61% 0.0226 239.49)",
+          "oklch(72% 0.0226 239.49)",
+          "oklch(84% 0.0226 239.49)",
+          "oklch(95% 0.0226 239.49)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Accent",
+        "tonalRamp": [
+          "oklch(15% 0.1529 91.89)",
+          "oklch(26% 0.1529 91.89)",
+          "oklch(38% 0.1529 91.89)",
+          "oklch(49% 0.1529 91.89)",
+          "oklch(61% 0.1529 91.89)",
+          "oklch(72% 0.1529 91.89)",
+          "oklch(84% 0.1529 91.89)",
+          "oklch(95% 0.1529 91.89)"
+        ]
+      },
+      "blue": {
+        "role": "secondary",
+        "displayName": "Blue",
+        "tonalRamp": [
+          "oklch(15% 0.1680 263.45)",
+          "oklch(26% 0.1680 263.45)",
+          "oklch(38% 0.1680 263.45)",
+          "oklch(49% 0.1680 263.45)",
+          "oklch(61% 0.1680 263.45)",
+          "oklch(72% 0.1680 263.45)",
+          "oklch(84% 0.1680 263.45)",
+          "oklch(95% 0.1680 263.45)"
+        ]
+      },
+      "green": {
+        "role": "secondary",
+        "displayName": "Green",
+        "tonalRamp": [
+          "oklch(15% 0.0882 165.88)",
+          "oklch(26% 0.0882 165.88)",
+          "oklch(38% 0.0882 165.88)",
+          "oklch(49% 0.0882 165.88)",
+          "oklch(61% 0.0882 165.88)",
+          "oklch(72% 0.0882 165.88)",
+          "oklch(84% 0.0882 165.88)",
+          "oklch(95% 0.0882 165.88)"
+        ]
+      },
+      "red": {
+        "role": "secondary",
+        "displayName": "Red",
+        "tonalRamp": [
+          "oklch(15% 0.1485 22.66)",
+          "oklch(26% 0.1485 22.66)",
+          "oklch(38% 0.1485 22.66)",
+          "oklch(49% 0.1485 22.66)",
+          "oklch(61% 0.1485 22.66)",
+          "oklch(72% 0.1485 22.66)",
+          "oklch(84% 0.1485 22.66)",
+          "oklch(95% 0.1485 22.66)"
+        ]
+      },
+      "focus": {
+        "role": "neutral",
+        "displayName": "Focus",
+        "tonalRamp": [
+          "oklch(15% 0.1309 84.93)",
+          "oklch(26% 0.1309 84.93)",
+          "oklch(38% 0.1309 84.93)",
+          "oklch(49% 0.1309 84.93)",
+          "oklch(61% 0.1309 84.93)",
+          "oklch(72% 0.1309 84.93)",
+          "oklch(84% 0.1309 84.93)",
+          "oklch(95% 0.1309 84.93)"
+        ]
+      },
+      "version-wash": {
+        "role": "neutral",
+        "displayName": "Version Wash",
+        "tonalRamp": [
+          "oklch(15% 0.0141 155.59)",
+          "oklch(26% 0.0141 155.59)",
+          "oklch(38% 0.0141 155.59)",
+          "oklch(49% 0.0141 155.59)",
+          "oklch(61% 0.0141 155.59)",
+          "oklch(72% 0.0141 155.59)",
+          "oklch(84% 0.0141 155.59)",
+          "oklch(95% 0.0141 155.59)"
+        ]
+      },
+      "error-wash": {
+        "role": "neutral",
+        "displayName": "Error Wash",
+        "tonalRamp": [
+          "oklch(15% 0.0142 74.42)",
+          "oklch(26% 0.0142 74.42)",
+          "oklch(38% 0.0142 74.42)",
+          "oklch(49% 0.0142 74.42)",
+          "oklch(61% 0.0142 74.42)",
+          "oklch(72% 0.0142 74.42)",
+          "oklch(84% 0.0142 74.42)",
+          "oklch(95% 0.0142 74.42)"
+        ]
+      },
+      "error-ink": {
+        "role": "neutral",
+        "displayName": "Error Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0801 64.80)",
+          "oklch(26% 0.0801 64.80)",
+          "oklch(38% 0.0801 64.80)",
+          "oklch(49% 0.0801 64.80)",
+          "oklch(61% 0.0801 64.80)",
+          "oklch(72% 0.0801 64.80)",
+          "oklch(84% 0.0801 64.80)",
+          "oklch(95% 0.0801 64.80)"
+        ]
+      },
+      "json-key": {
+        "role": "neutral",
+        "displayName": "Json Key",
+        "tonalRamp": [
+          "oklch(15% 0.0676 260.90)",
+          "oklch(26% 0.0676 260.90)",
+          "oklch(38% 0.0676 260.90)",
+          "oklch(49% 0.0676 260.90)",
+          "oklch(61% 0.0676 260.90)",
+          "oklch(72% 0.0676 260.90)",
+          "oklch(84% 0.0676 260.90)",
+          "oklch(95% 0.0676 260.90)"
+        ]
+      },
+      "json-string": {
+        "role": "neutral",
+        "displayName": "Json String",
+        "tonalRamp": [
+          "oklch(15% 0.0582 157.41)",
+          "oklch(26% 0.0582 157.41)",
+          "oklch(38% 0.0582 157.41)",
+          "oklch(49% 0.0582 157.41)",
+          "oklch(61% 0.0582 157.41)",
+          "oklch(72% 0.0582 157.41)",
+          "oklch(84% 0.0582 157.41)",
+          "oklch(95% 0.0582 157.41)"
+        ]
+      },
+      "json-number": {
+        "role": "neutral",
+        "displayName": "Json Number",
+        "tonalRamp": [
+          "oklch(15% 0.1231 93.93)",
+          "oklch(26% 0.1231 93.93)",
+          "oklch(38% 0.1231 93.93)",
+          "oklch(49% 0.1231 93.93)",
+          "oklch(61% 0.1231 93.93)",
+          "oklch(72% 0.1231 93.93)",
+          "oklch(84% 0.1231 93.93)",
+          "oklch(95% 0.1231 93.93)"
+        ]
+      },
+      "json-literal": {
+        "role": "neutral",
+        "displayName": "Json Literal",
+        "tonalRamp": [
+          "oklch(15% 0.0729 321.72)",
+          "oklch(26% 0.0729 321.72)",
+          "oklch(38% 0.0729 321.72)",
+          "oklch(49% 0.0729 321.72)",
+          "oklch(61% 0.0729 321.72)",
+          "oklch(72% 0.0729 321.72)",
+          "oklch(84% 0.0729 321.72)",
+          "oklch(95% 0.0729 321.72)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Shared page titles; WebSocket has a narrower local clamp."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Shared section headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Shared subsection headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default reading text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Compact utility and metadata role."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "JSON examples and data."
+      },
+      "operation-description": {
+        "displayName": "Operation Description",
+        "purpose": "Detailed operation prose."
+      },
+      "operation-label": {
+        "displayName": "Operation Label",
+        "purpose": "Explicit message direction labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "authorization-dialog",
+        "value": "0 12px 56px #182e3f33",
+        "purpose": "Swagger authorization dialog only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "register-reveal-duration",
+        "value": ".22s",
+        "purpose": "Clipped register reveal; no-preference motion setting only."
+      },
+      {
+        "name": "register-reveal-easing",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "Register reveal from inset(0 100% 0 0) to inset(0)."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "operation-split",
+        "value": "1200px"
+      },
+      {
+        "name": "register-compact",
+        "value": "1050px"
+      },
+      {
+        "name": "websocket-mobile",
+        "value": "900px"
+      },
+      {
+        "name": "shared-mobile",
+        "value": "760px"
+      },
+      {
+        "name": "small-phone",
+        "value": "480px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Reference Link",
+      "kind": "button",
+      "refersTo": "reference-link",
+      "description": "Primary reference navigation with a restrained navy hover.",
+      "html": "<a class=\"ds-reference\" href=\"#reference\">REST-Referenz <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14m-5-5 5 5-5 5\"/></svg></a>",
+      "css": ".ds-reference{font-family:var(--font,'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif);display:inline-flex;align-items:center;gap:12px;background:var(--navy);color:#fff;text-decoration:none;border-radius:5px;padding:11px 16px;font-size:13px;font-weight:550;line-height:1.7}.ds-reference svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-reference:hover{background:#2c495e}.ds-reference:focus-visible{outline:3px solid var(--focus,#b08400);outline-offset:4px}"
+    },
+    {
+      "name": "Utility Button",
+      "kind": "button",
+      "refersTo": "utility-button",
+      "description": "Compact secondary action; the index toggle shares this visual primitive.",
+      "html": "<button class=\"ds-utility\" type=\"button\">Index schließen</button>",
+      "css": ".ds-utility{font-family:var(--font,'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif);display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink);padding:7px 10px;font-size:12px;line-height:1.5;cursor:pointer}.ds-utility:hover{background:var(--wash);border-color:#9cafbd}.ds-utility:disabled{opacity:.55;cursor:default}.ds-utility:focus-visible{outline:3px solid var(--focus,#b08400);outline-offset:4px}"
+    },
+    {
+      "name": "Register Navigation",
+      "kind": "nav",
+      "refersTo": "primary-navigation",
+      "description": "Page selection uses a yellow register entry; hover stays within navy.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Dokumentation\"><a href=\"#overview\">Übersicht</a><a href=\"#rest\" aria-current=\"page\">Verzeichnisserver</a><a href=\"#websocket\">Spielserver &amp; Client</a></nav>",
+      "css": ".ds-nav{font-family:var(--font,'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif);display:grid;gap:4px;background:var(--navy);padding:24px}.ds-nav a{display:flex;color:#dce5ec;text-decoration:none;font-size:13px;padding:11px 12px;border-radius:5px;line-height:1.5}.ds-nav a:hover{background:#263f53;color:#fff}.ds-nav a[aria-current]{background:var(--accent);color:var(--ink);font-weight:650}.ds-nav a:focus-visible{outline:3px solid var(--focus,#b08400);outline-offset:4px}"
+    },
+    {
+      "name": "Message Search",
+      "kind": "input",
+      "refersTo": "message-search",
+      "description": "Dark register field with a persistent accessible label.",
+      "html": "<div class=\"ds-search-surface\"><label class=\"ds-search-label\" for=\"ds-message-query\">Nachrichten suchen</label><input class=\"ds-search\" id=\"ds-message-query\" type=\"search\" placeholder=\"Nachricht suchen …\"></div>",
+      "css": ".ds-search-surface{background:var(--navy);padding:20px}.ds-search-label{position:absolute;clip-path:inset(50%);height:1px;width:1px;overflow:hidden}.ds-search{font-family:var(--font,'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif);width:100%;padding:11px 10px;background:#243f54;border:1px solid #6e8598;border-radius:4px;font-size:12px;color:#fff;caret-color:var(--accent)}.ds-search::placeholder{color:#bdcdd8;opacity:1}.ds-search:focus-visible{outline:3px solid var(--focus,#b08400);outline-offset:4px}"
+    },
+    {
+      "name": "Version Label",
+      "kind": "chip",
+      "refersTo": "version-label",
+      "description": "Quiet, noninteractive contract version metadata.",
+      "html": "<span class=\"ds-version\">2.0.0</span>",
+      "css": ".ds-version{font-family:var(--font,'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif);display:inline-flex;align-items:center;color:var(--green);background:#eaf4ed;border-radius:4px;padding:3px 8px;font-size:12px;font-weight:600;line-height:1.7}"
+    },
+    {
+      "name": "Error Code Link",
+      "kind": "chip",
+      "refersTo": "error-chip",
+      "description": "Warm code link leading to the error catalog.",
+      "html": "<a class=\"ds-error\" href=\"#error\">INVALID_TOKEN</a>",
+      "css": ".ds-error{font:11px/1.6 var(--mono);display:inline-block;background:#f7f0e7;color:#795025;border-radius:3px;padding:4px 6px;text-decoration:none;max-width:100%}.ds-error:hover{background:#eee0cc}.ds-error:focus-visible{outline:3px solid var(--focus,#b08400);outline-offset:4px}"
+    },
+    {
+      "name": "Ruled Operation",
+      "kind": "custom",
+      "refersTo": "message-operation",
+      "description": "Native disclosure showing the flat operation grammar.",
+      "html": "<details class=\"ds-operation\"><summary><span class=\"ds-direction\">Client → Server</span><code>CONNECT</code><span class=\"ds-description\">Verbindung aufbauen</span><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m8 5 7 7-7 7\"/></svg></summary><p>Regeln, Schema und vollständige JSON-Beispiele stehen im geöffneten Eintrag.</p></details>",
+      "css": ".ds-operation{font-family:var(--font,'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif);background:#fff;color:var(--ink);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.ds-operation summary{list-style:none;display:grid;grid-template-columns:124px minmax(135px,max-content) minmax(0,1fr) 18px;gap:12px 16px;align-items:center;padding:19px 0;cursor:pointer}.ds-operation summary::-webkit-details-marker{display:none}.ds-operation summary:hover{background:#f7f9fb}.ds-direction{color:var(--blue);font-size:11px;font-weight:650;line-height:1.5;white-space:nowrap}.ds-operation code{font:650 13px/1.6 var(--mono)}.ds-description{font-size:12px;line-height:1.65;color:var(--muted)}.ds-operation svg{width:15px;height:15px;fill:none;stroke:var(--muted);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-operation[open] svg{transform:rotate(90deg)}.ds-operation p{font-size:14px;line-height:1.9;color:#344b5c;margin:18px 0 26px}.ds-operation summary:focus-visible{outline:3px solid var(--focus,#b08400);outline-offset:4px}@media(max-width:480px){.ds-operation summary{grid-template-columns:minmax(0,1fr) 18px}.ds-direction,.ds-operation code,.ds-description{grid-column:1}.ds-operation svg{grid-column:2;grid-row:1 / 4}}"
+    },
+    {
+      "name": "JSON Example",
+      "kind": "custom",
+      "refersTo": "example-code",
+      "description": "Keyboard-focusable navy code plane with syntax colors.",
+      "html": "<pre class=\"ds-example\" tabindex=\"0\" aria-label=\"CONNECT-Beispiel\"><code>{\n  <span class=\"ds-key\">\"type\"</span>: <span class=\"ds-string\">\"CONNECT\"</span>\n}</code></pre>",
+      "css": ".ds-example{background:var(--navy);color:#ebf1f7;padding:20px;font:13px/1.85 var(--mono);margin:0;max-width:100%;max-height:620px;overflow:auto;tab-size:2;border-radius:5px}.ds-example code{font:inherit}.ds-key{color:#b9d3ff}.ds-string{color:#b6e1c6}.ds-example:focus-visible{outline:3px solid var(--focus,#b08400);outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Protokoll-Handbuch",
+    "overview": "The Protokoll-Handbuch makes dense technical reference feel like a working handbook. A navy register provides orientation; the white reading plane carries explanation, operations and data. Yellow marks the selected register entry, while blue commands and green events retain their precise semantic roles.\n\nThe system is compact and practical: ruled entries replace decorative card stacks, Public Sans carries prose and interface labels, and monospace distinguishes protocol data. Depth comes primarily from surface contrast and dividers. The self-hosted variable Public Sans font is shipped with its OFL license; there are no shipping raster illustrations.",
+    "keyCharacteristics": [
+      "Navy register and white reading plane.",
+      "Yellow selected navigation; blue commands and green events.",
+      "Flat ruled operations with adjacent explanation and example/schema views.",
+      "Compact typography, direct keyboard paths and restrained motion."
+    ],
+    "rules": [
+      {
+        "name": "The Selected Register Rule",
+        "body": "Use yellow to locate the current register entry; keep operation direction explicit in text as well as color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Data Voice Rule",
+        "body": "Use Public Sans for reading and controls, and monospace for protocol identifiers, paths, schemas and JSON.",
+        "section": "typography"
+      },
+      {
+        "name": "The Ruled Plane Rule",
+        "body": "Keep reference operations flat and separate them with fine rules; reserve the documented shadow for the authorization dialog.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the selected register entry and the open operation consistent.",
+      "Do preserve adjacent explanation and data above the split breakpoint, then stack them for narrow reading.",
+      "Do retain visible focus, labeled icon actions, text direction labels and keyboard tab navigation.",
+      "Do use the shipped Public Sans font and inline stroke SVG icons."
+    ],
+    "donts": [
+      "Don't replace ruled reference entries with a decorative card grid.",
+      "Don't use color alone to communicate direction, selection or required fields.",
+      "Don't add reading-content entrance animation or apply the dialog shadow to ordinary reference rows."
+    ]
+  }
+}

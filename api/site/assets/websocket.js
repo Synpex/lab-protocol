@@ -61,39 +61,50 @@
       return node;
     }
     root.replaceChildren();
-    const controls = el('div', 'ws-controls'), toggle = el('button', 'sidebar-toggle'); toggle.type = 'button';
+    const controls = el('div', 'ws-controls docs-toolbar'), toggle = el('button', 'sidebar-toggle index-toggle'); toggle.type = 'button';
+    const toggleText = el('span'); toggle.append(Docs.icon('menu'), toggleText);
     toggle.setAttribute('aria-controls', 'ws-sidebar');
-    const pageNav = el('nav', 'ws-page-nav'); pageNav.setAttribute('aria-label', 'Dokumentation');
-    const restLink = el('a', '', 'REST API'); restLink.href = '../rest/';
-    const yamlLink = el('a', '', 'AsyncAPI YAML ↓'); yamlLink.href = '../specs/asyncapi.yaml'; yamlLink.setAttribute('download', '');
-    pageNav.append(restLink, yamlLink); controls.append(toggle, pageNav);
-    const layout = el('div', 'ws-layout'), sidebar = el('aside', 'ws-sidebar'); sidebar.id = 'ws-sidebar'; sidebar.setAttribute('aria-label', 'Nachrichtennavigation');
+    const pageNav = el('nav', 'ws-page-nav toolbar-actions'); pageNav.setAttribute('aria-label', 'Dokumentation');
+    const restLink = el('a', '', 'Übersicht'); restLink.href = '../';
+    const yamlLink = el('a', '', 'YAML'); yamlLink.append(Docs.icon('download')); yamlLink.href = '../specs/asyncapi.yaml'; yamlLink.setAttribute('download', '');
+    pageNav.append(restLink, yamlLink);
+    const toolbarStart = el('div', 'toolbar-start'); const mobileBrand=el('a','mobile-brand','Labyrinth'); mobileBrand.href='../'; toolbarStart.append(toggle, el('span', 'toolbar-context', 'Referenz / WebSocket'),mobileBrand); controls.append(toolbarStart, pageNav);
+    const layout = el('div', 'ws-layout'), sidebar = el('aside', 'ws-sidebar docs-index'); sidebar.id = 'ws-sidebar'; sidebar.setAttribute('aria-label', 'Nachrichtennavigation');
     let collapsed = matchMedia('(max-width: 900px)').matches;
     function setSidebar() {
       sidebar.hidden = collapsed; layout.classList.toggle('sidebar-collapsed', collapsed);
-      toggle.textContent = collapsed ? '☰ Sidebar einblenden' : '‹ Sidebar ausblenden';
+      toggleText.textContent = collapsed ? 'Index öffnen' : 'Index schließen'; toggle.setAttribute('aria-label',toggleText.textContent);
       toggle.setAttribute('aria-expanded', String(!collapsed));
     }
     toggle.addEventListener('click', () => {
       collapsed = !collapsed; setSidebar();
       if (!collapsed && matchMedia('(max-width: 900px)').matches) sidebar.scrollIntoView({ block: 'start' });
     }); setSidebar();
+    sidebar.append(Docs.indexBrand('../', 'socket'));
     const navigation = el('div', 'ws-navigation');
-    navigation.append(el('h2', 'navigation-heading', 'Nachrichtenübersicht'));
+    navigation.append(el('h2', 'navigation-heading', 'Nachrichten'));
     const searchLabel = el('label', 'search-label', 'Nachrichten suchen'), search = el('input', 'message-search');
-    search.type = 'search'; search.placeholder = 'z. B. CONNECT oder Schatz'; search.id = 'message-search'; searchLabel.htmlFor = search.id;
+    search.type = 'search'; search.placeholder = 'Befehl, Feld oder Regel suchen'; search.id = 'message-search'; searchLabel.htmlFor = search.id;
     const nav = el('nav', 'message-nav'); nav.setAttribute('aria-label', 'WebSocket-Nachrichten');
     const searchStatus = el('p', 'search-status'); searchStatus.setAttribute('role', 'status');
     const errorsLink = jumpLink(`Fehlercodes · ${errorCodes.length}`, '#error-codes', 'error-nav-link');
-    navigation.append(searchLabel, search, searchStatus, errorsLink, nav); sidebar.append(navigation);
+    const filters = el('div', 'direction-filters'); filters.setAttribute('role','group'); filters.setAttribute('aria-label','Nachrichten nach Richtung filtern');
+    let activeDirection = 'all'; const filterButtons = new Map();
+    for (const [value,label] of [['all','Alle'],['receive','Client'],['send','Server']]) {
+      const button = el('button','direction-filter',label); button.type='button'; button.setAttribute('aria-pressed',String(value === activeDirection));
+      button.addEventListener('click',()=> { activeDirection=value; for (const [key,item] of filterButtons) item.setAttribute('aria-pressed',String(key===value)); filterRows(); });
+      filterButtons.set(value,button); filters.append(button);
+    }
+    navigation.append(searchLabel, search, filters, searchStatus, errorsLink, nav); sidebar.append(navigation);
     const content = el('div', 'ws-content'), intro = el('section', 'ws-intro'), title = el('h1', '', 'Spielserver & Client');
     title.append(el('span', 'contract-version', contract.info.version), el('span', 'contract-format', `AsyncAPI ${contract.asyncapi}`));
-    intro.append(title, el('p', 'ws-intro-text', `${operations.length} klar getrennte Nachrichten über eine WebSocket-Verbindung. Öffne einen Eintrag für Ablauf, JSON-Beispiele und das vollständige Nachrichtenschema.`));
+    intro.append(title, el('p', 'ws-intro-text', `${operations.filter(item=>item.operation.action==='receive').length} Befehle senden. ${operations.filter(item=>item.operation.action==='send').length} Ereignisse empfangen. Hier findest du Richtung, Regeln und vollständige JSON-Nachrichten für die Verbindung zum Spielserver.`));
+    content.id='ws-content'; content.tabIndex=-1;
     const server = resolve(operations[0].channel.servers[0].$ref);
-    const endpoint = el('div', 'ws-endpoint'); endpoint.append(el('span', 'endpoint-badge', 'WEBSOCKET'), el('code', '', `${server.protocol}://${server.host}${operations[0].channel.address}`), el('span', '', 'host und port aus der öffentlichen Serverliste'));
+    const endpoint = el('div', 'ws-endpoint'); endpoint.append(el('span', 'endpoint-badge', 'WEBSOCKET'), el('code', '', `${server.protocol}://${server.host}${operations[0].channel.address}`), el('span', '', 'Host und Port aus der öffentlichen Serverliste'));
     const source = el('details', 'ws-source');
     source.append(el('summary', '', 'Quellen und Vertragsstand'), el('p', 'ws-source-note', contract.info.description));
-    const sourceLink = el('a', '', 'Begleitdokumentation und offene Abstimmungen ↗');
+    const sourceLink = el('a', '', 'Quellen und offene Abstimmungen');
     sourceLink.href = 'https://github.com/Synpex/lab-protocol/blob/main/api/README.md'; source.append(sourceLink);
     intro.append(endpoint, source); content.append(intro);
     const rows = new Map(), links = new Map(), groups = [];
@@ -104,7 +115,10 @@
         if (name === entry.message.name) link.setAttribute('aria-current', 'location');
         else link.removeAttribute('aria-current');
       }
-      if (scroll) rows.get(entry.message.name).scrollIntoView({ block: 'start' });
+      if (scroll) {
+        if (matchMedia('(max-width: 900px)').matches) { collapsed=true; setSidebar(); }
+        rows.get(entry.message.name).scrollIntoView({ block: 'start' }); rows.get(entry.message.name).querySelector('summary').focus({preventScroll:true});
+      }
     }
     for (const [action, direction] of Object.entries(directions)) {
       const entries = operations.filter(entry => entry.operation.action === action), navGroup = el('section', 'nav-group');
@@ -119,24 +133,27 @@
         link.addEventListener('click', event => { event.preventDefault(); history.pushState(null, '', `#${rowId}`); select(entry, true); });
         navGroup.append(link); links.set(message.name, link);
         const row = el('details', `message-operation ${direction.style}`); row.id = rowId;
-        const summary = el('summary', 'operation-summary'); summary.append(el('span', 'direction-badge', direction.label), el('code', 'message-name', message.name), el('span', 'operation-title', operation.summary), el('span', 'operation-chevron', '⌄')); row.append(summary);
-        const body = el('div', 'operation-body'), meta = el('div', 'operation-meta');
+        const summary = el('summary', 'operation-summary'); summary.append(el('span', 'direction-badge', direction.label), el('code', 'message-name', message.name), el('span', 'operation-title', operation.summary), el('span', 'operation-chevron')); summary.lastElementChild.append(Docs.icon('chevron')); row.append(summary);
+        const body = el('div', 'operation-body'), reading = el('div','operation-reading'), sample = el('div','operation-sample'), meta = el('div', 'operation-meta');
         meta.append(el('code', '', entry.channel.address), el('span', '', message.contentType ?? contract.defaultContentType));
         const delivery = { unicast: 'Unicast · privat', broadcast: 'Broadcast', 'broadcast and unicast on reconnect': 'Broadcast · beim Reconnect Unicast', 'client to server': 'Client-Befehl' }[message['x-delivery']] ?? message['x-delivery'];
         if (delivery) meta.append(el('span', 'delivery-label', delivery));
-        body.append(meta, el('p', 'operation-description', operation.description ?? message.description ?? ''));
+        reading.append(meta, el('p', 'operation-description', operation.description ?? message.description ?? ''));
+        const permalink = el('button','permalink utility-button','Link kopieren'); permalink.type='button'; permalink.setAttribute('aria-label',`${message.name}: Link kopieren`);
+        permalink.addEventListener('click',async()=> { try { const url=new URL(location.href); url.hash=rowId; await navigator.clipboard.writeText(url.href); permalink.textContent='Link kopiert'; } catch { permalink.textContent='Link steht in der Adresszeile'; history.replaceState(null,'',`#${rowId}`); } });
+        meta.append(permalink);
         if (operation.action === 'receive' || message.name === 'ERROR') {
           const errors = el('section', 'operation-errors');
           errors.append(el('h3', '', operation.action === 'receive' ? 'Dokumentierte Fehler' : 'Fehlercodes und Bedeutungen'));
           const codes = el('div', 'error-chips');
           for (const code of operation['x-error-codes'] ?? []) codes.append(jumpLink(code, `#${errorAnchor(code)}`, 'error-chip'));
-          errors.append(codes, jumpLink(`Alle ${errorCodes.length} Fehlercodes →`, '#error-codes', 'all-errors-link'));
+          errors.append(codes, jumpLink(`Alle ${errorCodes.length} Fehlercodes`, '#error-codes', 'all-errors-link'));
           if (message.name === 'ERROR') errors.append(el('p', '', 'ERROR wird nur an den betroffenen Client gesendet. data.errorCode enthält den Code, data.correlationType den auslösenden Befehl. data.message ist ein optionaler Erklärungstext. Der Spielzustand bleibt unverändert.'));
           else errors.append(el('p', '', 'Fehler werden als Server-Ereignis ERROR zurückgegeben. Die Zuordnung oben nennt die im jeweiligen Befehl ausdrücklich dokumentierten Codes; allgemeine Fehler stehen in der Übersicht.'));
-          body.append(errors);
+          reading.append(errors);
         }
         const tabs = el('div', 'message-tabs'); tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', `${message.name}: Beispiel oder Schema`);
-        const exampleTab = el('button', 'message-tab', 'Example Value'), schemaTab = el('button', 'message-tab', 'Schema');
+        const exampleTab = el('button', 'message-tab', 'JSON-Beispiel'), schemaTab = el('button', 'message-tab', 'Schema');
         const examplePanel = el('section', 'message-panel example-panel'), schemaPanel = el('section', 'message-panel schema-panel');
         for (const [button, panel, suffix] of [[exampleTab, examplePanel, 'example'], [schemaTab, schemaPanel, 'schema']]) {
           button.type = 'button'; button.id = `${rowId}-${suffix}-tab`; button.setAttribute('role', 'tab'); button.setAttribute('aria-controls', `${rowId}-${suffix}`);
@@ -150,7 +167,7 @@
         exampleTab.addEventListener('click', () => showPanel(true)); schemaTab.addEventListener('click', () => showPanel(false));
         tabs.addEventListener('keydown', event => {
           if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-            event.preventDefault(); const example = event.key === 'Home' || event.key === 'ArrowLeft'; showPanel(example); (example ? exampleTab : schemaTab).focus();
+            event.preventDefault(); const example = event.key === 'Home' ? true : event.key === 'End' ? false : exampleTab.getAttribute('aria-selected') !== 'true'; showPanel(example); (example ? exampleTab : schemaTab).focus();
           }
         });
         tabs.append(exampleTab, schemaTab);
@@ -159,14 +176,21 @@
         const copy = el('button', 'copy-example', 'JSON kopieren'); copy.type = 'button'; copy.setAttribute('aria-label', `${message.name}: JSON kopieren`);
         const copyStatus = el('span', 'copy-status'); copyStatus.setAttribute('role', 'status');
         const code = el('code'), pre = el('pre', 'example-code'); pre.append(code); pre.tabIndex = 0;
-        const updateExample = () => { code.textContent = JSON.stringify(message.examples[Number(exampleSelect.value)].payload, null, 2); copyStatus.textContent = ''; };
+        const updateExample = () => {
+          const json = JSON.stringify(message.examples[Number(exampleSelect.value)].payload, null, 2); code.replaceChildren();
+          const tokens = /"(?:[^"\\]|\\.)*"\s*:|"(?:[^"\\]|\\.)*"|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?/g; let start=0;
+          for (const match of json.matchAll(tokens)) { code.append(document.createTextNode(json.slice(start,match.index)));
+            const kind = match[0].endsWith(':')?'key':match[0].startsWith('"')?'string':['true','false','null'].includes(match[0])?'literal':'number'; code.append(el('span',`json-${kind}`,match[0])); start=match.index+match[0].length; }
+          code.append(document.createTextNode(json.slice(start))); copyStatus.textContent='';
+        };
         exampleSelect.addEventListener('change', updateExample); updateExample();
         copy.addEventListener('click', async () => {
           try { await navigator.clipboard.writeText(code.textContent); copyStatus.textContent = 'Kopiert'; }
           catch { copyStatus.textContent = 'Bitte JSON im Beispiel markieren und kopieren.'; }
         });
         toolbar.append(exampleSelect, copy); examplePanel.append(toolbar, pre, copyStatus); schemaPanel.append(schemaTree(message.payload)); showPanel(true);
-        body.append(tabs, examplePanel, schemaPanel); row.append(body); group.append(row); rows.set(message.name, row);
+        entry.searchText = `${message.name} ${operation.summary} ${operation.description} ${entry.direction.label} ${JSON.stringify(message.examples)} ${schemaPanel.textContent}`.toLocaleLowerCase('de');
+        sample.append(tabs, examplePanel, schemaPanel); body.append(reading,sample); row.append(body); group.append(row); rows.set(message.name, row);
         summary.addEventListener('click', event => {
           event.preventDefault();
           if (row.open) { row.open = false; links.get(message.name).removeAttribute('aria-current'); }
@@ -177,7 +201,7 @@
     }
     const catalog = el('section', 'error-catalog'); catalog.id = 'error-codes';
     const catalogHeading = el('h2', 'group-heading', 'Fehlercodes'); catalogHeading.append(el('span', 'group-count', `${errorCodes.length} Codes · Server → Client`));
-    catalog.append(catalogHeading, el('p', 'error-intro', 'Alle Fehler werden über ERROR an den verursachenden Client gemeldet. Die Übersicht enthält die standardisierten Codes der Dokumente sowie weitere in Befehlsbeschreibungen genannte Codes.'), jumpLink('ERROR: Nachricht und JSON-Beispiele öffnen →', '#message-error', 'error-message-link'));
+    catalog.append(catalogHeading, el('p', 'error-intro', 'Alle Fehler werden über ERROR an den verursachenden Client gemeldet. Die Übersicht enthält die standardisierten Codes der Dokumente sowie weitere in Befehlsbeschreibungen genannte Codes.'), jumpLink('ERROR: Nachricht und JSON-Beispiele öffnen', '#message-error', 'error-message-link'));
     for (const item of errorCodes) {
       const card = el('article', 'error-code-card'); card.id = errorAnchor(item.const); card.tabIndex = -1;
       const heading = el('h3'); heading.append(el('code', '', item.const));
@@ -191,19 +215,25 @@
       card.append(heading, detail); catalog.append(card);
     }
     content.append(catalog);
-    const empty = el('p', 'empty-results', 'Keine Nachricht gefunden. Versuche einen anderen Suchbegriff.'); empty.hidden = true; content.append(empty);
-    search.addEventListener('input', () => {
+    const empty = el('p', 'empty-results', 'Keine Nachricht gefunden. Versuche einen anderen Suchbegriff.'); empty.hidden = true; content.insertBefore(empty,catalog);
+    function filterRows() {
       const term = search.value.trim().toLocaleLowerCase('de'); let matches = 0;
       for (const entry of operations) {
-        const visible = `${entry.message.name} ${entry.operation.summary} ${entry.operation.description} ${entry.direction.label}`.toLocaleLowerCase('de').includes(term);
+        const visible = (activeDirection === 'all' || activeDirection === entry.operation.action) && entry.searchText.includes(term);
         rows.get(entry.message.name).hidden = !visible; links.get(entry.message.name).hidden = !visible; if (visible) matches++;
       }
       for (const { group, navGroup, entries } of groups) { const hidden = entries.every(entry => rows.get(entry.message.name).hidden); group.hidden = hidden; navGroup.hidden = hidden; }
       searchStatus.textContent = `${matches} von ${operations.length} Nachrichten`; empty.hidden = matches !== 0;
+    }
+    search.addEventListener('input',filterRows);
+    document.addEventListener('keydown',event=> {
+      if (event.key==='/' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.target.closest('input,textarea,select,[contenteditable]')) { event.preventDefault(); collapsed=false; setSidebar(); search.focus(); }
+      if (event.key==='Escape' && document.activeElement===search) { search.value=''; filterRows(); }
     });
     searchStatus.textContent = `${operations.length} Nachrichten · ${operations.filter(entry => entry.operation.action === 'receive').length} Befehle / ${operations.filter(entry => entry.operation.action === 'send').length} Ereignisse`;
-    layout.append(sidebar, content); root.append(controls, layout);
+    layout.append(sidebar, controls, content); root.append(layout);
     function fromHash(scroll) {
+      if (location.hash) { activeDirection='all'; search.value=''; for (const [key,item] of filterButtons) item.setAttribute('aria-pressed',String(key==='all')); filterRows(); }
       for (const card of catalog.querySelectorAll('.error-code-card')) card.classList.toggle('selected-error', `#${card.id}` === location.hash);
       const entry = operations.find(item => `#${anchor(item)}` === location.hash);
       if (entry) { search.value = ''; search.dispatchEvent(new Event('input')); select(entry, scroll); }
@@ -218,6 +248,6 @@
   } catch (error) {
     root.replaceChildren();
     const message = el('p', 'loading', `Die Dokumentation konnte nicht geladen werden: ${error.message}. Bitte lade die Seite neu oder nutze den YAML-Download.`);
-    message.setAttribute('role', 'alert'); root.append(message);
+    message.setAttribute('role', 'alert'); const fallback=el('a','','AsyncAPI-Vertrag herunterladen'); fallback.href='../specs/asyncapi.yaml'; fallback.className='loading-download'; root.append(message,fallback);
   }
 })();

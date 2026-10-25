@@ -35,3 +35,9 @@ build/
 ### API specification tooling ###
 api/node_modules/
 api/_site/
+
+### Impeccable local review artifacts ###
+.impeccable/questions/
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/direction-options.json

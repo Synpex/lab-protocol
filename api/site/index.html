@@ -1,50 +1,28 @@
 <!doctype html>
 <html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Labyrinth · Schnittstellen</title>
-  <link rel="stylesheet" href="assets/site.css">
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Labyrinth · Protokoll-Handbuch</title><link rel="stylesheet" href="assets/site.css"><script src="assets/site.js" defer></script></head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">L</span> Labyrinth <span class="brand-detail">Schnittstellen</span></a>
-    <a class="repo-link" href="https://github.com/Synpex/lab-protocol">Repository ↗</a>
-  </header>
-  <main class="landing">
-    <div class="eyebrow">Das verrückte Labyrinth</div>
-    <h1>Ein gemeinsames Protokoll.<br>Zwei Schnittstellen.</h1>
-    <p class="intro">Entdecke Spielserver über REST und kommuniziere mit ihnen über WebSocket. Hier findest du die Verträge, Nachrichten und Beispiele für deine Implementierung.</p>
-    <div class="cards">
-      <article class="card">
-        <div class="card-top"><span class="protocol">HTTP / REST</span><span class="count">4 Operationen</span></div>
-        <h2>Verzeichnisserver</h2>
-        <p>Spielserver registrieren, verfügbare Räume finden, Heartbeats senden und Server abmelden.</p>
-        <code class="endpoint">/api/servers</code>
-        <a class="primary-link" href="rest/">REST-Dokumentation öffnen <span aria-hidden="true">→</span></a>
-        <a class="download-link" href="specs/openapi.yaml" download>OpenAPI 3.1 herunterladen ↓</a>
-      </article>
-      <article class="card">
-        <div class="card-top"><span class="protocol">WEBSOCKET</span><span class="count">26 Nachrichtentypen</span></div>
-        <h2>Spielserver &amp; Client</h2>
-        <p>Lobby beitreten, Spielzüge senden und Ereignisse empfangen. 9 Client-Befehle und 17 Server-Ereignisse.</p>
-        <code class="endpoint">ws://host:port/game</code>
-        <a class="primary-link" href="websocket/">WebSocket-Dokumentation öffnen <span aria-hidden="true">→</span></a>
-        <a class="download-link" href="specs/asyncapi.yaml" download>AsyncAPI 3.0 herunterladen ↓</a>
-      </article>
-    </div>
-    <section class="flow" aria-label="Verbindungsablauf">
-      <span><b>01</b> Serverliste per REST abrufen</span>
-      <span aria-hidden="true">→</span>
-      <span><b>02</b> WebSocket zum Spielserver öffnen</span>
-      <span aria-hidden="true">→</span>
-      <span><b>03</b> CONNECT senden und spielen</span>
-    </section>
-    <aside class="notes">
-      <div><h2>Hinweise zur Implementierung</h2><p>Die REST-Beschreibung folgt dem vorhandenen Java-Code. Der WebSocket-Vertrag basiert auf den abgestimmten Schnittstellendokumenten. Quellenabweichungen und offene fachliche Punkte sind in der Begleitdokumentation festgehalten.</p></div>
-      <a href="https://github.com/Synpex/lab-protocol/blob/main/api/README.md">Begleitdokumentation ↗</a>
-    </aside>
-  </main>
-  <footer class="site-footer">Synpex / lab-protocol <span>REST 2.0.0 · WebSocket 1.0.0 · Automatisch aus dem Repository veröffentlicht</span></footer>
-</body>
-</html>
+<a class="skip-link" href="#content">Zum Inhalt</a>
+<div class="docs-shell">
+<aside class="docs-index" id="docs-index" aria-label="Dokumentationsindex">
+  <div data-brand="book" data-prefix="./"></div>
+  <h2 class="index-section-title">Auf dieser Seite</h2><nav class="index-links" aria-label="Seiteninhalt"><a href="#referenzen">Schnittstellen</a><a href="#schnellstart">Schnellstart</a><a href="#integration">Hinweise zur Integration</a></nav>
+  <h2 class="index-section-title">Verträge herunterladen</h2><div class="index-links"><a href="specs/openapi.yaml" download>OpenAPI 3.1 · YAML</a><a href="specs/asyncapi.yaml" download>AsyncAPI 3.0 · YAML</a></div>
+  <div class="index-footer">Synpex / lab-protocol<br>Verträge · Version 2.0.0</div>
+</aside>
+<div class="docs-main">
+<header class="docs-toolbar"><div class="toolbar-start"><button class="index-toggle" type="button" data-index-toggle aria-controls="docs-index"><i data-icon="menu"></i><span>Index schließen</span></button><span class="toolbar-context">Dokumentation / Übersicht</span></div><div class="toolbar-actions"><a href="https://github.com/Synpex/lab-protocol" aria-label="Repository auf GitHub öffnen"><span class="repository-label">Repository</span><i data-icon="link"></i></a></div></header>
+<main class="document" id="content">
+<h1>Das Protokoll zum Spiel.</h1>
+<p class="lead">Server finden. Verbindung aufbauen. Gemeinsam spielen. Die Referenz für die REST- und WebSocket-Schnittstellen von Labyrinth — mit vollständigen Schemas und direkt nutzbaren JSON-Beispielen.</p>
+<section id="referenzen" aria-label="Schnittstellenreferenzen" class="reference-list">
+<article class="reference-entry"><div><h2><a href="rest/">Verzeichnisserver</a><span class="transport-label">HTTP / REST</span></h2><p>Spielserver registrieren und finden, Heartbeats senden und Server abmelden. Schreibzugriffe sind mit einem Team-Key geschützt.</p><p class="reference-meta"><code>/api/servers</code> · 4 Operationen · OpenAPI 3.1</p></div><div class="entry-actions"><a class="reference-link" href="rest/">REST-Referenz <i data-icon="arrow"></i></a><a href="specs/openapi.yaml" download>YAML herunterladen</a></div></article>
+<article class="reference-entry"><div><h2><a href="websocket/">Spielserver &amp; Client</a><span class="transport-label ws">WEBSOCKET</span></h2><p>Lobby beitreten, Spielzüge senden und Zustände empfangen. Jede Nachricht ist mit Richtung, Regeln, Schema und Beispielen dokumentiert.</p><p class="reference-meta"><code>/game</code> · 9 Client-Befehle · 17 Server-Ereignisse</p></div><div class="entry-actions"><a class="reference-link" href="websocket/">WebSocket-Referenz <i data-icon="arrow"></i></a><a href="specs/asyncapi.yaml" download>YAML herunterladen</a></div></article>
+</section>
+<section class="document-section" id="schnellstart"><h2>In drei Schritten verbunden</h2><p class="section-intro">REST findet den Spielserver. Danach kommuniziert der Client direkt mit ihm über eine einzige WebSocket-Verbindung.</p><ol class="quickstart"><li><div><h3>Verfügbare Spielserver abrufen</h3><p>Rufe <a href="rest/#/Servers/listServers"><code>GET /api/servers</code></a> am Verzeichnisserver auf. Die Serverliste ist öffentlich und liefert unter anderem <code>host</code> und <code>port</code>.</p></div></li><li><div><h3>WebSocket zum ausgewählten Server öffnen</h3><p>Nutze <code class="inline-code">ws://{host}:{port}/game</code>. Der Spielserver antwortet zunächst mit <a href="websocket/#message-server_info">SERVER_INFO</a>.</p></div></li><li><div><h3>CONNECT senden und Bestätigung abwarten</h3><p>Sende innerhalb von 10 Sekunden <a href="websocket/#message-connect">CONNECT</a>. Bewahre das Token aus <a href="websocket/#message-connect_ack">CONNECT_ACK</a> für einen späteren Reconnect auf.</p></div></li></ol><pre class="code-sample" tabindex="0" aria-label="CONNECT-Beispiel"><code>{
+  "type": "CONNECT",
+  "data": { "username": "Alice" }
+}</code></pre></section>
+<aside class="documentation-note" id="integration"><h2>Ein Vertrag für alle Teams</h2><p>Die YAML-Dateien sind die Grundlage der Referenz und können direkt in andere Werkzeuge importiert werden. Die REST-Referenz enthält Swagger-Testfunktionen; die WebSocket-Referenz beschreibt den Nachrichtenvertrag.</p><a href="https://github.com/Synpex/lab-protocol/blob/main/api/README.md">Quellen, Migration auf 2.0.0 und offene Abstimmungen</a></aside>
+<footer class="document-footer"><span>Labyrinth · Protokoll-Handbuch</span><span>REST 2.0.0 / WebSocket 2.0.0</span></footer>
+</main></div></div></body></html>
