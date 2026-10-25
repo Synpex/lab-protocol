@@ -11,7 +11,7 @@ Die YAML-Dateien lassen sich in API-Werkzeuge importieren. In der AsyncAPI gelte
 
 ## Authentifizierung
 
-Spielserver verwenden ihren Team-Key als `X-API-Key` für Schreibzugriffe auf den Verzeichnisserver. Die Serverliste bleibt öffentlich. [Konfiguration und Start](../README.md#lokal-starten) · [Details und Beispiele](INTEGRATION.md#authentifizierung)
+Spielserver verwenden ihren Team-Key als `X-API-Key` für Schreibzugriffe auf den Verzeichnisserver. Die Serverliste bleibt öffentlich. [Konfiguration und Start](../README.md#lokal-starten) · [Betrieb und Authentifizierung](INTEGRATION.md#authentifizierung)
 
 ## Lokal prüfen und ansehen
 
@@ -27,4 +27,4 @@ python3 -m http.server 8811 --directory _site
 
 Danach [localhost:8811](http://localhost:8811) öffnen. Änderungen auf `main` werden nach erfolgreicher Prüfung automatisch auf GitHub Pages veröffentlicht.
 
-[Quellen, Migration auf 2.0.0 und offene Abstimmungen](INTEGRATION.md) stehen in den Integrationshinweisen. Bei Vertragsänderungen Schema, Beispiele und Beschreibung gemeinsam anpassen und die Validierung ausführen.
+[Umstieg auf 2.0.0 und offene Fragen](INTEGRATION.md) stehen in den Integrationshinweisen. Bei Vertragsänderungen Schema, Beispiele und Beschreibung gemeinsam anpassen und die Validierung ausführen.
