@@ -5,7 +5,7 @@
 | [openapi.yaml](openapi.yaml) | Verzeichnisserver | HTTP/REST, OpenAPI 3.1 | Vorhandene Java-Implementierung |
 | [asyncapi.yaml](asyncapi.yaml) | Spielserver ↔ Client | WebSocket, AsyncAPI 3.0 | Vertrag aus den bereitgestellten Dokumenten; Spielserver noch nicht im Repo implementiert |
 
-Die Spezifikationen sind unabhängig importierbare YAML-Dateien mit ausschließlich internen `$ref`-Referenzen. Die OpenAPI verwendet `info.version: 2.0.0` wegen der jetzt verpflichtenden Authentifizierung für Schreiboperationen; die AsyncAPI bleibt bei `1.0.0`. Diese Werte versionieren die Vertragsdateien; der Beispielwert `SERVER_INFO.serverVersion: 2.0.0` ist ein anderes, bislang nicht ausgehandeltes Metadatum.
+Die Spezifikationen sind unabhängig importierbare YAML-Dateien mit ausschließlich internen `$ref`-Referenzen. Die OpenAPI verwendet `info.version: 2.0.0` wegen der jetzt verpflichtenden Authentifizierung für Schreiboperationen; die AsyncAPI verwendet `2.0.0` wegen der im Oktober bestätigten Änderungen an Befehlen, Schiebeparametern und Ereignissen. Diese Werte versionieren die Vertragsdateien; der Beispielwert `SERVER_INFO.serverVersion: 2.0.0` ist ein anderes, bislang nicht ausgehandeltes Metadatum.
 
 ## Quellen und Abgleich
 
@@ -35,7 +35,7 @@ npm run build:site
 python3 -m http.server 8811 --directory _site
 ```
 
-Anschließend `http://localhost:8811` öffnen. `_site/` ist erzeugter Output und bleibt außerhalb von Git. Quellen sind `site/`, `build-site.mjs` und die beiden YAML-Verträge. Der REST-Viewer kann Browser-Anfragen nur an entsprechend erreichbare Zielserver mit HTTPS/CORS senden. Die WebSocket-Ansicht zeigt jede der 27 Nachrichten als eigenen aufklappbaren Eintrag im Swagger-Stil. Eine durchsuchbare Sidebar trennt Client-Befehle und Server-Ereignisse und öffnet die gewählte Nachricht. JSON-Beispiele (einschließlich aller Varianten) und das auflösbare Schema stehen in Tabs direkt im Eintrag; JSON lässt sich kopieren. Die Sidebar lässt sich auf Desktop und Mobilgeräten vollständig ausblenden; der Nachrichtenbereich nutzt dann auch ihre bisherige Breite. Auf Mobilgeräten startet sie ausgeblendet. Der obere Markenbanner entfällt. Eine eigene Fehlerübersicht zeigt alle 18 Codes mit Bedeutung, Auslösern und Links zu den ausdrücklich dokumentierten Befehlen. Diese Befehle verlinken ihre Fehler direkt; `ERROR` verweist auf die vollständige Übersicht. Die Bedeutungen stehen als `oneOf`-Varianten im `ErrorCode`-Schema, die Befehlszuordnungen als `x-error-codes` an den Operationen. Für `INVALID_ACTION` bleibt die offene Abstimmung sichtbar. Die Daten werden beim Build direkt aus `asyncapi.yaml` erzeugt; es gibt keine zweite manuell gepflegte Vertragsdatei. Die Ansicht ist kein laufender Spielserver oder WebSocket-Testclient. Asset-URLs und Vertragsdaten werden beim Build mit einer Inhaltsrevision versehen, damit veröffentlichte Änderungen nicht mit altem JavaScript/CSS vermischt werden.
+Anschließend `http://localhost:8811` öffnen. `_site/` ist erzeugter Output und bleibt außerhalb von Git. Quellen sind `site/`, `build-site.mjs` und die beiden YAML-Verträge. Der REST-Viewer kann Browser-Anfragen nur an entsprechend erreichbare Zielserver mit HTTPS/CORS senden. Die WebSocket-Ansicht zeigt jede der 26 Nachrichten als eigenen aufklappbaren Eintrag im Swagger-Stil. Eine durchsuchbare Sidebar trennt Client-Befehle und Server-Ereignisse und öffnet die gewählte Nachricht. JSON-Beispiele (einschließlich aller Varianten) und das auflösbare Schema stehen in Tabs direkt im Eintrag; JSON lässt sich kopieren. Die Sidebar lässt sich auf Desktop und Mobilgeräten vollständig ausblenden; der Nachrichtenbereich nutzt dann auch ihre bisherige Breite. Auf Mobilgeräten startet sie ausgeblendet. Der obere Markenbanner entfällt. Eine eigene Fehlerübersicht zeigt alle 17 Codes mit Bedeutung, Auslösern und Links zu den ausdrücklich dokumentierten Befehlen. Diese Befehle verlinken ihre Fehler direkt; `ERROR` verweist auf die vollständige Übersicht. Die Bedeutungen stehen als `oneOf`-Varianten im `ErrorCode`-Schema, die Befehlszuordnungen als `x-error-codes` an den Operationen. Die Daten werden beim Build direkt aus `asyncapi.yaml` erzeugt; es gibt keine zweite manuell gepflegte Vertragsdatei. Die Ansicht ist kein laufender Spielserver oder WebSocket-Testclient. Asset-URLs und Vertragsdaten werden beim Build mit einer Inhaltsrevision versehen, damit veröffentlichte Änderungen nicht mit altem JavaScript/CSS vermischt werden.
 
 ## Import und Validierung
 
@@ -128,21 +128,83 @@ Die OpenAPI beschreibt die vollständigen von Konsumenten zu sendenden Heartbeat
 3. Spielserver sendet `SERVER_INFO` per Unicast; Client sendet binnen 10 Sekunden `CONNECT`.
 4. `CONNECT_ACK` liefert Spieler-ID, Farbe, Admin-Rolle und privates Reconnect-Token. `LOBBY_STATE` aktualisiert die Teilnehmer.
 5. Admin sendet `START_GAME`. Server sendet `GAME_STARTED`, unmittelbar danach den vollständigen `GAME_STATE_UPDATE` sowie je Spieler private `NEXT_TREASURE`.
-6. Aktiver Spieler dreht/schiebt in `WAITING_FOR_PUSH`, bewegt seine Figur oder passt in `WAITING_FOR_MOVE`. Zustandsänderungen kommen als vollständiger Snapshot zurück.
+6. Aktiver Spieler sendet `PUSH_TILE` mit Einfügekoordinaten und Rotation in `WAITING_FOR_PUSH`. Danach folgt `WAITING_FOR_BONUS_USE`: BEAM/SWAP einsetzen oder mit `PASS_MOVE` überspringen. In `WAITING_FOR_MOVE` bewegen oder den Zug mit `PASS_MOVE` beenden. Zustandsänderungen kommen als vollständiger Snapshot zurück.
 7. Reconnect binnen 30 Sekunden: neuen WebSocket öffnen, `CONNECT` mit gespeichertem `identifierToken`; nach `CONNECT_ACK` vollständigen State und die private Schatzkarte erhalten.
 8. Nach `GAME_OVER` können Vormatch-Spieler für 15 Sekunden bevorzugt eine Revanche zusagen.
 
-**Alle 27 Nachrichtentypen nutzen dieselbe Verbindung und dasselbe Envelope:**
+**Alle 26 Nachrichtentypen nutzen dieselbe Verbindung und dasselbe Envelope:**
 
 ```json
 {"type":"CONNECT","data":{"username":"Alice"}}
 ```
 
-Kein REST-Endpunkt für Spielzüge und kein zusätzlicher WebSocket zum Verzeichnisserver ist in dieser Version definiert. Unicast/Broadcast sind Zustellregeln auf dem gemeinsamen Kanal, keine verschiedenen Endpunkte. Die AsyncAPI enthält 10 Client-Befehle und 17 Server-Ereignisse, jeweils mit vollständigem Envelope-Beispiel. `NEXT_TREASURE`, `CONNECT_ACK`, `SERVER_INFO` und `ERROR` sind privat; `GAME_STATE_UPDATE` ist regulär Broadcast und beim Reconnect zusätzlich Unicast.
+Kein REST-Endpunkt für Spielzüge und kein zusätzlicher WebSocket zum Verzeichnisserver ist in dieser Version definiert. Unicast/Broadcast sind Zustellregeln auf dem gemeinsamen Kanal, keine verschiedenen Endpunkte. Die AsyncAPI enthält 9 Client-Befehle und 17 Server-Ereignisse, jeweils mit vollständigem Envelope-Beispiel. `NEXT_TREASURE`, `CONNECT_ACK`, `SERVER_INFO` und `ERROR` sind privat; `GAME_STATE_UPDATE` ist regulär Broadcast und beim Reconnect zusätzlich Unicast.
 
 Gemeinsame Datentypen: `Direction`, `PlayerColor`, `TurnState`, `BonusType`, `Coordinates`, `Tile`, `Board`, Spielerprofile und Statistik. `USE_BONUS` hat vier unterscheidbare Varianten mit passenden `params`. `row`/`column` beginnen bei 0 oben links; `cols` bezeichnet ausschließlich eine Board-Dimension. Zeitpunkte sind ISO-8601 UTC mit `Z` und basieren auf der Serverzeit.
 
-`entrances` bestimmt verbindlich die offenen Wege. `rotation` 0–3 dient zur Darstellung; eine Drehung über `ROTATE_SPARE_TILE` aktualisiert beide Werte. Normale Schübe verwenden ungerade innere Indizes, `PUSH_FIXED` gerade innere Indizes. Figuren auf der hinausgeschobenen Kachel werden auf die neu eingeschobene Kachel gegenüber gesetzt. Boni bleiben an ihrer Kachel. Nur das Bewegungsziel sammelt Bonus/Schatz, Schritte werden nach dem Q&A über den kürzesten Weg gezählt. Ungültige Befehle verändern den Spielzustand nicht; erneute Versuche sind möglich, die Zugzeit läuft weiter.
+`entrances` bestimmt verbindlich die offenen Wege. `rotation` ist absolut: 0 = 0°, 1 = 90°, 2 = 180°, 3 = 270°, jeweils im Uhrzeigersinn zur ungedrehten Ausgangslage. `PUSH_TILE` setzt die gewünschte Orientierung beim Einschieben; der Server aktualisiert `entrances` entsprechend. Normale Schübe verwenden ungerade innere Indizes, `PUSH_FIXED` gerade innere Indizes. Figuren auf der hinausgeschobenen Kachel werden auf die neu eingeschobene Kachel gegenüber gesetzt. Boni bleiben an ihrer Kachel. Nur das Bewegungsziel sammelt Bonus/Schatz, Schritte werden nach dem Q&A über den kürzesten Weg gezählt. Ungültige Befehle verändern den Spielzustand nicht; erneute Versuche sind möglich, die Zugzeit läuft weiter.
+
+
+## Änderungen vom 25.10.2026 (AsyncAPI 2.0.0)
+
+Grundlage sind die vom Auftraggeber zur Übernahme eingereichten Teamnachrichten vom 16.–23.10.2026 und die Bestätigung der Bonusphasen sowie null-Schatzfelder am 25.10.2026. Diese Entscheidungen ersetzen die widersprechenden älteren PDF-Passagen. Der Hinweis auf einen entfallenden `PUSH_TILE` wird wegen der gleichzeitig angeforderten Erweiterung dieses Befehls als Verweis auf den separaten Drehbefehl verstanden. `PUSH_TILE` bleibt erhalten; `ROTATE_SPARE_TILE` und dessen Fehler `INVALID_ACTION` entfallen. Andere Teams müssen ihre Clients für die folgenden Änderungen anpassen.
+
+### Einfügekoordinaten und Rotation
+
+`PUSH_TILE.data` und `USE_BONUS` mit `bonusType: PUSH_FIXED` verwenden `rowIndex`, `columnIndex`, `rotation` und `direction`. `board.lastPush` verwendet dieselbe Darstellung. `rowOrColIndex` entfällt.
+
+Die Koordinaten bezeichnen die Randkachel **im Board**, auf deren Position eingeschoben wird, mit Ursprung oben links:
+
+| Richtung | Einfügeposition | Gewählte Linie |
+| --- | --- | --- |
+| RIGHT | `columnIndex = 0` | `rowIndex` |
+| LEFT | `columnIndex = cols - 1` | `rowIndex` |
+| DOWN | `rowIndex = 0` | `columnIndex` |
+| UP | `rowIndex = rows - 1` | `columnIndex` |
+
+Regulär ist der gewählte innere Index ungerade, bei `PUSH_FIXED` gerade. Randreihen/-spalten sind keine wählbaren Linien. Obergrenzen und Gegenschubverbot werden anhand des aktuellen Boards geprüft. `rotation` ist die absolute Orientierung der Ersatzkachel (0/90/180/270° im Uhrzeigersinn), kein relativer Drehschritt.
+
+```json
+{"type":"PUSH_TILE","data":{"rowIndex":1,"columnIndex":0,"rotation":1,"direction":"RIGHT"}}
+```
+
+### Bonusphasen und Ergebnisse
+
+| Befehl / Bonus | Erlaubte Phase | Wirkung / Folgephase |
+| --- | --- | --- |
+| PUSH_TILE | WAITING_FOR_PUSH | Schieben → WAITING_FOR_BONUS_USE |
+| BEAM | WAITING_FOR_BONUS_USE | Auf freies Ziel teleportieren → WAITING_FOR_MOVE |
+| SWAP | WAITING_FOR_BONUS_USE | Mit anderem Spieler tauschen → WAITING_FOR_MOVE |
+| PUSH_FIXED | WAITING_FOR_PUSH | Gerade innere Linie unmittelbar schieben → WAITING_FOR_BONUS_USE |
+| PUSH_TWICE | WAITING_FOR_MOVE, nach erstem Schub | WAITING_FOR_PUSH freischalten, danach PUSH_TILE |
+| PASS_MOVE | WAITING_FOR_BONUS_USE | Nur Bonusphase überspringen → WAITING_FOR_MOVE, gleicher Spieler |
+| PASS_MOVE | WAITING_FOR_MOVE | Zug ohne Bewegung beenden → nächster Spieler, WAITING_FOR_PUSH |
+| MOVE_FIGURE | WAITING_FOR_MOVE | Bewegung ausführen und Zug beenden |
+
+Bei Erfolg wird der genutzte Bonus einmalig aus dem Inventar entfernt. Falsche Phase: `INVALID_TURN_PHASE`; falscher Spieler: `NOT_YOUR_TURN`. `GAME_STATE_UPDATE.currentTurnInfo.turnState` bildet jede Phase explizit ab. Phasenwechsel allein setzen keinen neuen Spielerzug voraus.
+
+`BONUS_USED.data.details` ist je `bonusType` typisiert und hat für jede Variante ein eigenes Beispiel:
+
+| Bonus | Pflichtfelder in details |
+| --- | --- |
+| BEAM | `targetCoordinates` |
+| SWAP | `swappedWithPlayerId` |
+| PUSH_FIXED | `rowIndex`, `columnIndex`, `rotation`, `direction` |
+| PUSH_TWICE | `turnState: "WAITING_FOR_PUSH"` |
+
+Anschließend folgt der vollständige State; `details` ersetzt diesen Snapshot nicht.
+
+### Schatz-IDs und Heimkehr
+
+Alle Schatz-IDs (`Treasure.id`, `NEXT_TREASURE.treasureId`, `TREASURE_FOUND.treasureId`) verwenden denselben Integerbereich **0 bis 23**. Höchstens 24 verschiedene IDs bedeutet nicht, dass jede Partie alle 24 enthalten muss.
+
+`remainingTreasureCount` zählt alle noch zu sammelnden Karten einschließlich der aktuellen Karte. Bei einem positiven Wert müssen ID und Name gesetzt sein. Nach dem letzten Fund und bei einem Reconnect ohne verbleibende Karte lautet die private Nachricht:
+
+```json
+{"type":"NEXT_TREASURE","data":{"treasureId":null,"name":null,"remainingTreasureCount":0}}
+```
+
+Der Client zeigt „Kehre zu deiner Homebase zurück“ an und liest das Ziel aus `GAME_STATE_UPDATE.players` beim eigenen `playerId` unter `homePosition`. Es wird keine künstliche Schatz-ID für die Homebase und keine zusätzliche Nachricht eingeführt. Die Bewegung erfolgt weiter über das reguläre Protokoll; die Schatzsammlung allein beendet die Partie noch nicht, die Heimkehr ist zusätzlich erforderlich.
 
 ## Auslegung und noch offene Abstimmungen
 
@@ -151,17 +213,17 @@ Diese Punkte sind für Implementierer relevant; sie werden nicht durch erfundene
 | Punkt | Behandlung in dieser Vertragsversion |
 | --- | --- |
 | Lobby-Konfiguration vor dem Start | Q&A schlägt `UPDATE_GAME_CONFIG` und Konfiguration in `LOBBY_STATE` vor. Kein vollständiger, ausdrücklich definierter Wire-Vertrag vorhanden; nicht als weitere Operation ergänzt. Konfiguration bisher über dokumentiertes `START_GAME`. |
-| Drehung im `PUSH_TILE` | Q&A schlägt Ablösung von `ROTATE_SPARE_TILE` vor. API-Dokumentation und Diagramm führen den Befehl weiterhin und `PUSH_TILE` ohne Rotation; diese Fassung beibehalten. |
+| Drehung im `PUSH_TILE` | Seit 2.0.0 direkt über `PUSH_TILE.rotation`; separater Drehbefehl entfernt. |
 | `GAME_STARTED`-Board | Begleittext verlangt das gesamte Board, konkretes JSON enthält nur `rows`, `cols`, `gameEndTime`, `spareTile`. Diese Felder übernommen; vollständiger Snapshot zwingend direkt danach. Kein zusätzliches Board-Feld erfunden. |
 | Unvollständiges State-Beispiel | PDF zeigt für 7×7 nur eine Zeile mit zwei Kacheln und gleichzeitig Schatz + Bonus. Beispiel durch vollständiges 3×3 mit zwei Spielern ersetzt; Gleichzeitigkeit von Schatz und Bonus im Schema ausgeschlossen. |
 | Pflichtfelder von Ereignissen | Wo nur Beispiele vorliegen, deren Felder als vollständige Form modelliert. `PLAYER_UPDATED` ist gemäß Diagramm partiell; `ERROR.message` optional, weil im Diagramm weggelassen. Weitere optionale Varianten müssen abgestimmt werden. |
-| Fehlercodes | Tabelle plus `INVALID_CONFIG` aus `START_GAME` und `INVALID_ACTION` aus `ROTATE_SPARE_TILE` zusammengeführt. Bedeutung/Abgrenzung von `INVALID_ACTION` zu `INVALID_TURN_PHASE` ist noch abzustimmen. |
+| Fehlercodes | 17 Codes: PDF-Tabelle plus `INVALID_CONFIG`. `INVALID_ACTION` entfällt; falsche Zugphasen verwenden `INVALID_TURN_PHASE`. |
 | Timeout | 30 Sekunden Reconnect, konfigurierbare Zugzeit und 3 Sekunden Warncountdown sind getrennte Größen; Texte/Diagramm legen deren Kopplung nicht konsistent fest. Keine zusätzliche Frist oder Server-KI festgeschrieben. |
-| Bonusphasen | `BONUS` ist nur eine Überschrift und fehlt im TurnState-Enum. `PUSH_TWICE`: MOVE → PUSH beschrieben; Zeitpunkt/Wirkung der übrigen Boni auf Zugabschluss offen. |
+| Bonusphasen | `WAITING_FOR_BONUS_USE` und phasenabhängiges `PASS_MOVE` sind bestätigt. Die erlaubten Phasen und Folgezustände stehen in der Tabelle oben. |
 | Inventar | Architekturtext erlaubt freie Auswahl, Meetingprotokoll nennt FIFO, Q&A lässt Größe/Handhabung gruppenabhängig. Array bleibt erhalten; keine zusätzliche Reihenfolge-/Kapazitätsregel im Schema. |
 | Punkte und Achievements | 20/15/135 sind Beispielwerte, kein vereinbartes Punktesystem. Achievement-Namen sind freie Strings. Kein Login und keine Persistenzpflicht aus diskutierten Vorschlägen abgeleitet. |
-| Spielende | Alle Schätze + Rückkehr zur Start-Ecke. Erstes Spielende oder Weiterspielen ist serverabhängig. Gleichstand, keine Gewinner-ID, letzte Schatzkarte sowie unbegrenzte `gameEndTime`-Darstellung nicht verbindlich definiert. |
-| Offene Wertelisten | Schatz-ID-Katalog, Abmelde-/Spielende-Gründe und Details anderer Boni sind nicht vollständig definiert; keine künstlichen Enums oder IDs ergänzt. |
+| Spielende | Alle Schätze + Rückkehr zur Start-Ecke. Erstes Spielende oder Weiterspielen ist serverabhängig. Nach letzter Karte: `NEXT_TREASURE` mit Zähler 0 und null-Schatzfeldern, Rückkehr zur eigenen `homePosition`. Gleichstand, keine Gewinner-ID sowie unbegrenzte `gameEndTime`-Darstellung bleiben offen. |
+| Offene Wertelisten | Schatz-IDs sind 0–23; die Zuordnung zu Motiven/Namen bleibt abzustimmen. Abmelde-/Spielende-Gründe sind nicht vollständig definiert. Bonusdetails sind seit 2.0.0 je Typ spezifiziert. |
 | Zusätzliche Metadaten | `requestId`, Kachel-ID, `shape`, Version-Aushandlung und verbleibende Sekunden sind diskutierte Erweiterungen ohne vollständigen Vertrag; nicht erfunden. |
 
 Generierte Clients benötigen bei diesen offenen Fällen eine gemeinsame Abstimmung mit dem implementierenden Spielserver. Ein erfolgreiches Schema-Parsing bestätigt nicht, dass die fachlichen Lücken geklärt sind.

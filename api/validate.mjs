@@ -148,8 +148,13 @@ for (const operation of Object.values(asyncapi.operations)) {
   }
 }
 assert.equal(seen.size, Object.keys(asyncapi.channels.game.messages).length);
-assert.equal(received, 10);
+assert.equal(received, 9);
 assert.equal(sent, 17);
+assert.equal(asyncapi.info.version, '2.0.0');
+assert.ok(!seen.has('ROTATE_SPARE_TILE'));
+assert.ok(!Object.hasOwn(asyncapi.components.schemas, 'RotateSpareTileEnvelope'));
+assert.equal(errorCode.enum.length, 17);
+assert.ok(!errorCode.enum.includes('INVALID_ACTION'));
 
 // Boundary and negative cases check the rules that cause interoperability mistakes.
 const register = { name: 'Arena', host: 'localhost', port: 9000, maxPlayers: 4 };
@@ -167,7 +172,33 @@ checkGame(schema('ConnectEnvelope'), { type: 'MOVE_FIGURE', data: { username: 'A
 checkGame(schema('ConnectEnvelope'), { type: 'CONNECT' }, 'missing envelope data', false);
 checkGame(schema('ConnectEnvelope'), { type: 'CONNECT', data: { username: '' } }, 'empty username', false);
 checkGame(schema('UseBonusData'), { bonusType: 'BEAM', params: { targetPlayerId: 'p-102' } }, 'wrong bonus params', false);
-checkGame(schema('UseBonusData'), { bonusType: 'PUSH_FIXED', params: { rowOrColIndex: 3, direction: 'DOWN' } }, 'fixed push must be even', false);
+checkGame(schema('UseBonusData'), { bonusType: 'PUSH_FIXED', params: { rowIndex: 0, columnIndex: 3, rotation: 0, direction: 'DOWN' } }, 'fixed push must be even', false);
+checkGame(schema('UseBonusData'), { bonusType: 'PUSH_FIXED', params: { rowIndex: 0, columnIndex: 2, rotation: 3, direction: 'DOWN' } }, 'fixed push valid');
+for (const [direction, rowIndex, columnIndex] of [['RIGHT', 1, 0], ['LEFT', 1, 6], ['DOWN', 0, 3], ['UP', 6, 3]]) {
+  checkGame(schema('PushTileData'), { direction, rowIndex, columnIndex, rotation: 1 }, `push from ${direction}`);
+}
+for (const data of [
+  { rowOrColIndex: 1, direction: 'RIGHT' },
+  { rowIndex: 1, columnIndex: 0, direction: 'RIGHT' },
+  { rowIndex: 1, columnIndex: 6, rotation: 0, direction: 'RIGHT' },
+  { rowIndex: 2, columnIndex: 0, rotation: 0, direction: 'RIGHT' },
+  { rowIndex: 1, columnIndex: 0, rotation: 4, direction: 'RIGHT' },
+]) checkGame(schema('PushTileData'), data, `invalid push ${JSON.stringify(data)}`, false);
+for (const id of [0, 23]) checkGame(schema('TreasureId'), id, `treasure endpoint ${id}`);
+for (const id of [-1, 24, 1.5]) checkGame(schema('TreasureId'), id, `invalid treasure ${id}`, false);
+for (const [name, value] of [
+  ['Treasure', { id: 24, name: 'invalid' }],
+  ['TreasureFoundData', { playerId: 'p-101', treasureId: 24, treasureName: 'invalid', pointsAwarded: 20 }],
+  ['NextTreasureData', { treasureId: 24, name: 'invalid', remainingTreasureCount: 1 }],
+  ['NextTreasureData', { treasureId: 4, name: 'Krone', remainingTreasureCount: 0 }],
+  ['NextTreasureData', { treasureId: null, name: null, remainingTreasureCount: 1 }],
+  ['NextTreasureData', { remainingTreasureCount: 0 }],
+]) checkGame(schema(name), value, `invalid ${name} ${JSON.stringify(value)}`, false);
+checkGame(schema('NextTreasureData'), { treasureId: null, name: null, remainingTreasureCount: 0 }, 'return home after last treasure');
+checkGame(schema('TurnState'), 'WAITING_FOR_BONUS_USE', 'bonus phase');
+checkGame(schema('BonusUsedData'), { playerId: 'p-101', bonusType: 'BEAM', details: { swappedWithPlayerId: 'p-102' } }, 'beam requires coordinates', false);
+checkGame(schema('BonusUsedData'), { playerId: 'p-101', bonusType: 'PUSH_TWICE', details: { turnState: 'WAITING_FOR_MOVE' } }, 'double push must grant push phase', false);
+checkGame(schema('ErrorCode'), 'INVALID_ACTION', 'removed error code', false);
 checkGame(schema('Tile'), { entrances: ['UP', 'RIGHT'], rotation: 0, treasure: { id: 4, name: 'Krone' }, bonus: 'BEAM', isFixed: false }, 'bonus and treasure cannot coexist', false);
 checkGame(schema('Coordinates'), { row: -1, column: 0 }, 'negative coordinate', false);
 checkGame(schema('UtcTimestamp'), '2026-09-15T20:00:00+02:00', 'timestamp must be UTC Z', false);

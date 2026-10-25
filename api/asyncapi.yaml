@@ -2,13 +2,14 @@ asyncapi: 3.0.0
 id: urn:synpex:lab-protocol:game
 info:
   title: Das verrückte Labyrinth - Spielserver WebSocket
-  version: 1.0.0
-  description: "Vertrag aus den bereitgestellten PDFs, aus Sicht des Spielservers: receive = Client
-    sendet Befehl, send = Server sendet Event. Genau eine persistente WebSocket-Verbindung unter
-    ws://host:port/game; JSON-Textnachrichten mit type/data-Envelope. Im Repository ist noch kein
-    Spielserver implementiert. Diese Version bildet die dokumentierten Nachrichten ab;
-    Abstimmungslücken sind in README.md und Beschreibungen benannt. Erweiterungsfelder sind erlaubt,
-    außer bei ausdrücklich leerem data/params."
+  version: 2.0.0
+  description: "Vertrag aus den bereitgestellten PDFs mit den vom Auftraggeber bestätigten Änderungen vom
+    16.–25.10.2026. Sicht des Spielservers: receive = Client sendet Befehl, send = Server sendet Event.
+    Eine persistente WebSocket-Verbindung unter ws://host:port/game; JSON-Textnachrichten mit
+    type/data-Envelope. Breaking Changes gegenüber 1.0.0: Drehung in PUSH_TILE integriert,
+    Koordinaten/Rotation beim Schieben, Schatz-IDs 0–23, weitere Zugphase, typisierte Bonusdetails und
+    null-Schatz nach letzter Karte. Noch offene Punkte stehen in README.md. Erweiterungsfelder sind
+    erlaubt, außer bei ausdrücklich leerem data/params."
   contact:
     name: Schnittstellenteam
     url: https://github.com/Synpex/lab-protocol
@@ -46,8 +47,6 @@ channels:
         $ref: "#/components/messages/DISCONNECT"
       START_GAME:
         $ref: "#/components/messages/START_GAME"
-      ROTATE_SPARE_TILE:
-        $ref: "#/components/messages/ROTATE_SPARE_TILE"
       PUSH_TILE:
         $ref: "#/components/messages/PUSH_TILE"
       MOVE_FIGURE:
@@ -101,9 +100,9 @@ operations:
       $ref: "#/channels/game"
     summary: Lobby beitreten oder Session wiederaufnehmen
     description: Innerhalb von 10 Sekunden nach WebSocket-Verbindung senden. Im laufenden Spiel nur mit
-      gültigem identifierToken. Antworten CONNECT_ACK und LOBBY_STATE; beim Reconnect danach
-      Full-State und NEXT_TREASURE. Fehler LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED.
-    x-error-codes: [LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED]
+      gültigem identifierToken. Antworten CONNECT_ACK und LOBBY_STATE; beim Reconnect danach Full-State
+      und NEXT_TREASURE. Fehler LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED.
+    x-error-codes: [ LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED ]
     messages:
       - $ref: "#/channels/game/messages/CONNECT"
   receiveDisconnect:
@@ -119,32 +118,26 @@ operations:
     channel:
       $ref: "#/channels/game"
     summary: Partie starten und konfigurieren
-    description: Nur Admin, mindestens 2 Spieler. GAME_STARTED, Full-State und private NEXT_TREASURE
-      folgen. Fehler NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG.
-    x-error-codes: [NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG]
+    description: Nur Admin, mindestens 2 Spieler. GAME_STARTED, Full-State und private NEXT_TREASURE folgen.
+      Fehler NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG.
+    x-error-codes: [ NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG ]
     messages:
       - $ref: "#/channels/game/messages/START_GAME"
-  receiveRotateSpareTile:
-    action: receive
-    channel:
-      $ref: "#/channels/game"
-    summary: Ersatzkachel um 90 Grad drehen
-    description: Im Uhrzeigersinn; nur aktiver Spieler in WAITING_FOR_PUSH. Aktualisiert entrances und
-      rotation. Fehler NOT_YOUR_TURN, INVALID_ACTION. Eigenständiger Befehl bleibt gemäß
-      API-Dokumentation erhalten.
-    x-error-codes: [NOT_YOUR_TURN, INVALID_ACTION]
-    messages:
-      - $ref: "#/channels/game/messages/ROTATE_SPARE_TILE"
   receivePushTile:
     action: receive
     channel:
       $ref: "#/channels/game"
     summary: Ersatzkachel einschieben
-    description: Nur WAITING_FOR_PUSH, aktiver Spieler. Regulär ungerade innere Indizes; direkten
-      Gegenschub des Vorzugs ablehnen. Figuren auf herausgeschobener Kachel per Wrap-Around auf
-      gegenüberliegende eingeschobene Kachel setzen. Richtung bezeichnet die Schieberichtung. Danach
-      WAITING_FOR_MOVE und berechnete reachablePositions. Fehler INVALID_PUSH, NOT_YOUR_TURN.
-    x-error-codes: [INVALID_PUSH, NOT_YOUR_TURN]
+    description: Nur aktiver Spieler in WAITING_FOR_PUSH. rowIndex und columnIndex bezeichnen die
+      Einfügeposition am Boardrand; direction die Schieberichtung und rotation die absolute Orientierung
+      (0/90/180/270° im Uhrzeigersinn). Regulär ungerade innere Zeilen/Spalten; direkten Gegenschub des
+      Vorzugs ablehnen. Figuren auf herausgeschobener Kachel per Wrap-Around auf die gegenüberliegende
+      eingeschobene Kachel setzen. Danach WAITING_FOR_BONUS_USE und vollständiges GAME_STATE_UPDATE.
+      Fehler INVALID_PUSH, NOT_YOUR_TURN, INVALID_TURN_PHASE.
+    x-error-codes:
+      - INVALID_PUSH
+      - NOT_YOUR_TURN
+      - INVALID_TURN_PHASE
     messages:
       - $ref: "#/channels/game/messages/PUSH_TILE"
   receiveMoveFigure:
@@ -155,27 +148,43 @@ operations:
     description: Nur WAITING_FOR_MOVE. Ziel muss über offene Gänge erreichbar und frei sein. Über andere
       Figuren darf hinweggezogen werden. Nur Zielfeld sammelt Schätze/Boni; Schritte gemäß Q&A über
       kürzesten Weg. Danach nächster Spieler. Fehler TARGET_UNREACHABLE, POSITION_OCCUPIED.
-    x-error-codes: [TARGET_UNREACHABLE, POSITION_OCCUPIED]
+    x-error-codes: [ TARGET_UNREACHABLE, POSITION_OCCUPIED ]
     messages:
       - $ref: "#/channels/game/messages/MOVE_FIGURE"
   receivePassMove:
     action: receive
     channel:
       $ref: "#/channels/game"
-    summary: Ohne Bewegung Zug beenden
-    description: Nur WAITING_FOR_MOVE; Figur bleibt stehen.
+    summary: Bonusphase überspringen oder Zug ohne Bewegung beenden
+    description: "Phasenabhängig, nur aktiver Spieler: In WAITING_FOR_BONUS_USE wird ausschließlich die
+      Bonusphase übersprungen, die Figur bleibt stehen und derselbe Spieler wechselt zu WAITING_FOR_MOVE.
+      In WAITING_FOR_MOVE wird ohne Bewegung der Zug beendet und der nächste Spieler beginnt in
+      WAITING_FOR_PUSH. In WAITING_FOR_PUSH nicht erlaubt. Jeder Wechsel wird als vollständiges
+      GAME_STATE_UPDATE gesendet. Fehler NOT_YOUR_TURN, INVALID_TURN_PHASE."
     messages:
       - $ref: "#/channels/game/messages/PASS_MOVE"
+    x-error-codes:
+      - NOT_YOUR_TURN
+      - INVALID_TURN_PHASE
   receiveUseBonus:
     action: receive
     channel:
       $ref: "#/channels/game"
     summary: Bonus aus Inventar verwenden
-    description: Bonus muss verfügbar sein, einmalig verbrauchen. BEAM teleportiert auf freies Feld,
-      SWAP tauscht mit anderem Spieler, PUSH_FIXED schiebt gerade innere Reihe/Spalte, PUSH_TWICE
-      ermöglicht zweiten Schub. BONUS_USED und Full-State folgen. Fehler BONUS_NOT_AVAILABLE,
-      INVALID_BONUS_TARGET. BONUS ist eine Rubrik, kein zusätzlicher TurnState.
-    x-error-codes: [BONUS_NOT_AVAILABLE, INVALID_BONUS_TARGET]
+    description: Nur aktiver Spieler; Bonus muss im Inventar verfügbar sein und wird bei erfolgreicher
+      Nutzung einmalig verbraucht. BEAM und SWAP sind in WAITING_FOR_BONUS_USE erlaubt und führen danach
+      zu WAITING_FOR_MOVE. BEAM teleportiert auf ein freies Feld; SWAP tauscht mit einem anderen Spieler.
+      PUSH_FIXED ist in WAITING_FOR_PUSH erlaubt und schiebt mit seinen params direkt eine gerade innere
+      Zeile/Spalte; danach WAITING_FOR_BONUS_USE. PUSH_TWICE ist wie bisher in WAITING_FOR_MOVE nach dem
+      ersten Schub erlaubt und setzt auf WAITING_FOR_PUSH zurück; der folgende Schub erfolgt mit
+      PUSH_TILE. BONUS_USED mit typabhängigen details und vollständiges GAME_STATE_UPDATE folgen.
+      PASS_MOVE überspringt eine ungenutzte Bonusphase. Fehler BONUS_NOT_AVAILABLE, INVALID_BONUS_TARGET,
+      NOT_YOUR_TURN, INVALID_TURN_PHASE.
+    x-error-codes:
+      - BONUS_NOT_AVAILABLE
+      - INVALID_BONUS_TARGET
+      - NOT_YOUR_TURN
+      - INVALID_TURN_PHASE
     messages:
       - $ref: "#/channels/game/messages/USE_BONUS"
   receiveSetAiMode:
@@ -192,8 +201,8 @@ operations:
     channel:
       $ref: "#/channels/game"
     summary: Revanche-Zusage abgeben
-    description: Nach GAME_OVER. Vormatch-Spieler haben für 15 Sekunden Vorrang; dann öffnet sich die
-      Lobby für neue Spieler.
+    description: Nach GAME_OVER. Vormatch-Spieler haben für 15 Sekunden Vorrang; dann öffnet sich die Lobby
+      für neue Spieler.
     messages:
       - $ref: "#/channels/game/messages/REMATCH_REQUEST"
   sendServerInfo:
@@ -235,8 +244,14 @@ operations:
     channel:
       $ref: "#/channels/game"
     summary: Nächste geheime Schatzkarte
-    description: Ausschließlich an den berechtigten Spieler; niemals broadcasten. Nach Start, nach
-      gefundenem Schatz und beim Reconnect.
+    description: "Privat an den berechtigten Spieler, niemals Broadcast. Nach Start, Schatzfund und
+      Reconnect. remainingTreasureCount zählt noch zu sammelnde Karten einschließlich der aktuellen
+      Karte. Bei remainingTreasureCount > 0 sind treasureId (0–23) und name gesetzt. Bei 0 sind
+      treasureId und name ausdrücklich null: keine aktive Schatzkarte, stattdessen zur eigenen
+      homePosition aus players in GAME_STATE_UPDATE zurückkehren. Der Client zeigt diesen Auftrag an;
+      NEXT_TREASURE wird nicht mit einer Homebase-Schatz-ID zweckentfremdet. Die Bewegung erfolgt
+      weiterhin regulär. Rückkehr bei 0 erfüllt die Heimkehrbedingung; GAME_OVER richtet sich nach den
+      Spielenderegeln."
     messages:
       - $ref: "#/channels/game/messages/NEXT_TREASURE"
   sendGameStateUpdate:
@@ -270,8 +285,10 @@ operations:
     channel:
       $ref: "#/channels/game"
     summary: Bonus erfolgreich verbraucht
-    description: details ist nur für SWAP konkret dokumentiert; für übrige Boni keine verbindlichen
-      Feldnamen festgelegt.
+    description: "Broadcast nach erfolgreicher Bonusnutzung. details ist je bonusType getrennt spezifiziert:
+      BEAM → targetCoordinates, SWAP → swappedWithPlayerId, PUSH_FIXED →
+      rowIndex/columnIndex/rotation/direction, PUSH_TWICE → turnState WAITING_FOR_PUSH. Danach
+      vollständiges GAME_STATE_UPDATE als verbindlicher Zustand."
     messages:
       - $ref: "#/channels/game/messages/BONUS_USED"
   sendTreasureFound:
@@ -320,8 +337,8 @@ operations:
     channel:
       $ref: "#/channels/game"
     summary: Spielende mit Rangliste und Kennzahlen
-    description: Alle Schätze und Rückkehr zur homePosition bilden die Siegbedingung; Ende beim ersten
-      Sieger oder Weiterspielen ist serverabhängig. Punktesystem und Gleichstand nicht festgelegt.
+    description: Alle Schätze und Rückkehr zur homePosition bilden die Siegbedingung; Ende beim ersten Sieger
+      oder Weiterspielen ist serverabhängig. Punktesystem und Gleichstand nicht festgelegt.
     messages:
       - $ref: "#/channels/game/messages/GAME_OVER"
   sendRematchStatus:
@@ -337,8 +354,8 @@ operations:
     channel:
       $ref: "#/channels/game"
     summary: Befehl abgewiesen
-    description: Nur an Verursacher; Spielzustand unverändert. Beliebig viele Wiederholungsversuche,
-      Zugzeit läuft weiter. correlationType korreliert nur den Befehlstyp, keine einzelne Anfrage.
+    description: Nur an Verursacher; Spielzustand unverändert. Beliebig viele Wiederholungsversuche, Zugzeit
+      läuft weiter. correlationType korreliert nur den Befehlstyp, keine einzelne Anfrage.
     messages:
       - $ref: "#/channels/game/messages/ERROR"
 components:
@@ -348,8 +365,8 @@ components:
       title: Lobby beitreten oder Session wiederaufnehmen
       summary: Lobby beitreten oder Session wiederaufnehmen
       description: Innerhalb von 10 Sekunden nach WebSocket-Verbindung senden. Im laufenden Spiel nur mit
-        gültigem identifierToken. Antworten CONNECT_ACK und LOBBY_STATE; beim Reconnect danach
-        Full-State und NEXT_TREASURE. Fehler LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED.
+        gültigem identifierToken. Antworten CONNECT_ACK und LOBBY_STATE; beim Reconnect danach Full-State
+        und NEXT_TREASURE. Fehler LOBBY_FULL, USERNAME_TAKEN, GAME_ALREADY_STARTED.
       contentType: application/json
       payload:
         $ref: "#/components/schemas/ConnectEnvelope"
@@ -390,8 +407,8 @@ components:
       name: START_GAME
       title: Partie starten und konfigurieren
       summary: Partie starten und konfigurieren
-      description: Nur Admin, mindestens 2 Spieler. GAME_STARTED, Full-State und private NEXT_TREASURE
-        folgen. Fehler NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG.
+      description: Nur Admin, mindestens 2 Spieler. GAME_STARTED, Full-State und private NEXT_TREASURE folgen.
+        Fehler NOT_ADMIN, NOT_ENOUGH_PLAYERS, INVALID_CONFIG.
       contentType: application/json
       payload:
         $ref: "#/components/schemas/StartGameEnvelope"
@@ -412,45 +429,38 @@ components:
       x-delivery: client to server
       x-source-pages:
         - 15
-    ROTATE_SPARE_TILE:
-      name: ROTATE_SPARE_TILE
-      title: Ersatzkachel um 90 Grad drehen
-      summary: Ersatzkachel um 90 Grad drehen
-      description: Im Uhrzeigersinn; nur aktiver Spieler in WAITING_FOR_PUSH. Aktualisiert entrances und
-        rotation. Fehler NOT_YOUR_TURN, INVALID_ACTION. Eigenständiger Befehl bleibt gemäß
-        API-Dokumentation erhalten.
-      contentType: application/json
-      payload:
-        $ref: "#/components/schemas/RotateSpareTileEnvelope"
-      examples:
-        - name: rotate_spare_tile
-          summary: Ersatzkachel um 90 Grad drehen
-          payload:
-            type: ROTATE_SPARE_TILE
-            data: {}
-      x-delivery: client to server
-      x-source-pages:
-        - 17
     PUSH_TILE:
       name: PUSH_TILE
       title: Ersatzkachel einschieben
       summary: Ersatzkachel einschieben
-      description: Nur WAITING_FOR_PUSH, aktiver Spieler. Regulär ungerade innere Indizes; direkten
-        Gegenschub des Vorzugs ablehnen. Figuren auf herausgeschobener Kachel per Wrap-Around auf
-        gegenüberliegende eingeschobene Kachel setzen. Richtung bezeichnet die Schieberichtung.
-        Danach WAITING_FOR_MOVE und berechnete reachablePositions. Fehler INVALID_PUSH,
-        NOT_YOUR_TURN.
+      description: Nur aktiver Spieler in WAITING_FOR_PUSH. rowIndex und columnIndex bezeichnen die
+        Einfügeposition am Boardrand; direction die Schieberichtung und rotation die absolute
+        Orientierung (0/90/180/270° im Uhrzeigersinn). Regulär ungerade innere Zeilen/Spalten; direkten
+        Gegenschub des Vorzugs ablehnen. Figuren auf herausgeschobener Kachel per Wrap-Around auf die
+        gegenüberliegende eingeschobene Kachel setzen. Danach WAITING_FOR_BONUS_USE und vollständiges
+        GAME_STATE_UPDATE. Fehler INVALID_PUSH, NOT_YOUR_TURN, INVALID_TURN_PHASE.
       contentType: application/json
       payload:
         $ref: "#/components/schemas/PushTileEnvelope"
       examples:
-        - name: push_tile
-          summary: Ersatzkachel einschieben
+        - name: push_from_left
+          summary: Zeile 1 von links einschieben, Ersatzkachel auf 90°
           payload:
             type: PUSH_TILE
             data:
-              rowOrColIndex: 1
+              rowIndex: 1
+              columnIndex: 0
+              rotation: 1
               direction: RIGHT
+        - name: push_from_top
+          summary: Spalte 3 von oben einschieben
+          payload:
+            type: PUSH_TILE
+            data:
+              rowIndex: 0
+              columnIndex: 3
+              rotation: 0
+              direction: DOWN
       x-delivery: client to server
       x-source-pages:
         - 18
@@ -459,8 +469,8 @@ components:
       title: Figur zu erreichbarem Ziel ziehen
       summary: Figur zu erreichbarem Ziel ziehen
       description: Nur WAITING_FOR_MOVE. Ziel muss über offene Gänge erreichbar und frei sein. Über andere
-        Figuren darf hinweggezogen werden. Nur Zielfeld sammelt Schätze/Boni; Schritte gemäß Q&A
-        über kürzesten Weg. Danach nächster Spieler. Fehler TARGET_UNREACHABLE, POSITION_OCCUPIED.
+        Figuren darf hinweggezogen werden. Nur Zielfeld sammelt Schätze/Boni; Schritte gemäß Q&A über
+        kürzesten Weg. Danach nächster Spieler. Fehler TARGET_UNREACHABLE, POSITION_OCCUPIED.
       contentType: application/json
       payload:
         $ref: "#/components/schemas/MoveFigureEnvelope"
@@ -478,15 +488,24 @@ components:
         - 19
     PASS_MOVE:
       name: PASS_MOVE
-      title: Ohne Bewegung Zug beenden
-      summary: Ohne Bewegung Zug beenden
-      description: Nur WAITING_FOR_MOVE; Figur bleibt stehen.
+      title: Bonusphase überspringen oder Zug ohne Bewegung beenden
+      summary: Bonusphase überspringen oder Zug ohne Bewegung beenden
+      description: "Phasenabhängig, nur aktiver Spieler: In WAITING_FOR_BONUS_USE wird ausschließlich die
+        Bonusphase übersprungen, die Figur bleibt stehen und derselbe Spieler wechselt zu
+        WAITING_FOR_MOVE. In WAITING_FOR_MOVE wird ohne Bewegung der Zug beendet und der nächste Spieler
+        beginnt in WAITING_FOR_PUSH. In WAITING_FOR_PUSH nicht erlaubt. Jeder Wechsel wird als
+        vollständiges GAME_STATE_UPDATE gesendet. Fehler NOT_YOUR_TURN, INVALID_TURN_PHASE."
       contentType: application/json
       payload:
         $ref: "#/components/schemas/PassMoveEnvelope"
       examples:
+        - name: skip_bonus_phase
+          summary: "In WAITING_FOR_BONUS_USE: gleiche Person darf danach ziehen"
+          payload:
+            type: PASS_MOVE
+            data: {}
         - name: pass_move
-          summary: Ohne Bewegung Zug beenden
+          summary: "In WAITING_FOR_MOVE: Zug beenden, nächster Spieler"
           payload:
             type: PASS_MOVE
             data: {}
@@ -497,10 +516,15 @@ components:
       name: USE_BONUS
       title: Bonus aus Inventar verwenden
       summary: Bonus aus Inventar verwenden
-      description: Bonus muss verfügbar sein, einmalig verbrauchen. BEAM teleportiert auf freies Feld,
-        SWAP tauscht mit anderem Spieler, PUSH_FIXED schiebt gerade innere Reihe/Spalte, PUSH_TWICE
-        ermöglicht zweiten Schub. BONUS_USED und Full-State folgen. Fehler BONUS_NOT_AVAILABLE,
-        INVALID_BONUS_TARGET. BONUS ist eine Rubrik, kein zusätzlicher TurnState.
+      description: Nur aktiver Spieler; Bonus muss im Inventar verfügbar sein und wird bei erfolgreicher
+        Nutzung einmalig verbraucht. BEAM und SWAP sind in WAITING_FOR_BONUS_USE erlaubt und führen
+        danach zu WAITING_FOR_MOVE. BEAM teleportiert auf ein freies Feld; SWAP tauscht mit einem anderen
+        Spieler. PUSH_FIXED ist in WAITING_FOR_PUSH erlaubt und schiebt mit seinen params direkt eine
+        gerade innere Zeile/Spalte; danach WAITING_FOR_BONUS_USE. PUSH_TWICE ist wie bisher in
+        WAITING_FOR_MOVE nach dem ersten Schub erlaubt und setzt auf WAITING_FOR_PUSH zurück; der
+        folgende Schub erfolgt mit PUSH_TILE. BONUS_USED mit typabhängigen details und vollständiges
+        GAME_STATE_UPDATE folgen. PASS_MOVE überspringt eine ungenutzte Bonusphase. Fehler
+        BONUS_NOT_AVAILABLE, INVALID_BONUS_TARGET, NOT_YOUR_TURN, INVALID_TURN_PHASE.
       contentType: application/json
       payload:
         $ref: "#/components/schemas/UseBonusEnvelope"
@@ -528,7 +552,9 @@ components:
             data:
               bonusType: PUSH_FIXED
               params:
-                rowOrColIndex: 2
+                rowIndex: 0
+                columnIndex: 2
+                rotation: 2
                 direction: DOWN
         - name: push_twice
           payload:
@@ -562,8 +588,8 @@ components:
       name: REMATCH_REQUEST
       title: Revanche-Zusage abgeben
       summary: Revanche-Zusage abgeben
-      description: Nach GAME_OVER. Vormatch-Spieler haben für 15 Sekunden Vorrang; dann öffnet sich die
-        Lobby für neue Spieler.
+      description: Nach GAME_OVER. Vormatch-Spieler haben für 15 Sekunden Vorrang; dann öffnet sich die Lobby
+        für neue Spieler.
       contentType: application/json
       payload:
         $ref: "#/components/schemas/RematchRequestEnvelope"
@@ -684,8 +710,14 @@ components:
       name: NEXT_TREASURE
       title: Nächste geheime Schatzkarte
       summary: Nächste geheime Schatzkarte
-      description: Ausschließlich an den berechtigten Spieler; niemals broadcasten. Nach Start, nach
-        gefundenem Schatz und beim Reconnect.
+      description: "Privat an den berechtigten Spieler, niemals Broadcast. Nach Start, Schatzfund und
+        Reconnect. remainingTreasureCount zählt noch zu sammelnde Karten einschließlich der aktuellen
+        Karte. Bei remainingTreasureCount > 0 sind treasureId (0–23) und name gesetzt. Bei 0 sind
+        treasureId und name ausdrücklich null: keine aktive Schatzkarte, stattdessen zur eigenen
+        homePosition aus players in GAME_STATE_UPDATE zurückkehren. Der Client zeigt diesen Auftrag an;
+        NEXT_TREASURE wird nicht mit einer Homebase-Schatz-ID zweckentfremdet. Die Bewegung erfolgt
+        weiterhin regulär. Rückkehr bei 0 erfüllt die Heimkehrbedingung; GAME_OVER richtet sich nach den
+        Spielenderegeln."
       contentType: application/json
       payload:
         $ref: "#/components/schemas/NextTreasureEnvelope"
@@ -698,6 +730,14 @@ components:
               treasureId: 4
               name: Goldene Krone
               remainingTreasureCount: 5
+        - name: return_home
+          summary: "Alle Schätze gefunden: Rückkehr zur eigenen Homebase"
+          payload:
+            type: NEXT_TREASURE
+            data:
+              treasureId: null
+              name: null
+              remainingTreasureCount: 0
       x-delivery: unicast
       x-source-pages:
         - 29
@@ -826,6 +866,120 @@ components:
                 turnState: WAITING_FOR_PUSH
                 turnEndTime: 2026-09-15T18:02:30Z
                 reachablePositions: []
+        - name: bonus_phase
+          summary: "Nach dem Schieben: optionale Bonusphase"
+          payload:
+            type: GAME_STATE_UPDATE
+            data:
+              board:
+                rows: 3
+                cols: 3
+                tiles:
+                  - - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: true
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: false
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: true
+                  - - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: false
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure:
+                        id: 4
+                        name: Goldene Krone
+                      bonus: null
+                      isFixed: false
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: false
+                  - - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: true
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: false
+                    - entrances:
+                        - UP
+                        - RIGHT
+                      rotation: 0
+                      treasure: null
+                      bonus: null
+                      isFixed: true
+                spareTile:
+                  entrances:
+                    - UP
+                    - RIGHT
+                  rotation: 0
+                  treasure: null
+                  bonus: null
+                  isFixed: false
+              players:
+                - playerId: p-101
+                  username: Alice
+                  playerColor: RED
+                  currentPosition:
+                    row: 0
+                    column: 0
+                  homePosition:
+                    row: 0
+                    column: 0
+                  remainingTreasureCount: 6
+                  availableBonuses: []
+                  isConnected: true
+                  isAiControlled: false
+                - playerId: p-102
+                  username: Bob
+                  playerColor: BLUE
+                  currentPosition:
+                    row: 2
+                    column: 2
+                  homePosition:
+                    row: 2
+                    column: 2
+                  remainingTreasureCount: 6
+                  availableBonuses: []
+                  isConnected: true
+                  isAiControlled: false
+              currentTurnInfo:
+                activePlayerId: p-101
+                turnState: WAITING_FOR_BONUS_USE
+                turnEndTime: 2026-09-15T18:02:30Z
+                reachablePositions: []
       x-delivery: broadcast; unicast on reconnect
       x-source-pages:
         - 30
@@ -875,14 +1029,27 @@ components:
       name: BONUS_USED
       title: Bonus erfolgreich verbraucht
       summary: Bonus erfolgreich verbraucht
-      description: details ist nur für SWAP konkret dokumentiert; für übrige Boni keine verbindlichen
-        Feldnamen festgelegt.
+      description: "Broadcast nach erfolgreicher Bonusnutzung. details ist je bonusType getrennt spezifiziert:
+        BEAM → targetCoordinates, SWAP → swappedWithPlayerId, PUSH_FIXED →
+        rowIndex/columnIndex/rotation/direction, PUSH_TWICE → turnState WAITING_FOR_PUSH. Danach
+        vollständiges GAME_STATE_UPDATE als verbindlicher Zustand."
       contentType: application/json
       payload:
         $ref: "#/components/schemas/BonusUsedEnvelope"
       examples:
-        - name: bonus_used
-          summary: Bonus erfolgreich verbraucht
+        - name: beam
+          summary: "BEAM: typisierte Ergebnisdetails"
+          payload:
+            type: BONUS_USED
+            data:
+              playerId: p-101
+              bonusType: BEAM
+              details:
+                targetCoordinates:
+                  row: 5
+                  column: 2
+        - name: swap
+          summary: "SWAP: typisierte Ergebnisdetails"
           payload:
             type: BONUS_USED
             data:
@@ -890,6 +1057,27 @@ components:
               bonusType: SWAP
               details:
                 swappedWithPlayerId: p-102
+        - name: push_fixed
+          summary: "PUSH_FIXED: typisierte Ergebnisdetails"
+          payload:
+            type: BONUS_USED
+            data:
+              playerId: p-101
+              bonusType: PUSH_FIXED
+              details:
+                rowIndex: 0
+                columnIndex: 2
+                rotation: 2
+                direction: DOWN
+        - name: push_twice
+          summary: "PUSH_TWICE: typisierte Ergebnisdetails"
+          payload:
+            type: BONUS_USED
+            data:
+              playerId: p-101
+              bonusType: PUSH_TWICE
+              details:
+                turnState: WAITING_FOR_PUSH
       x-delivery: broadcast
       x-source-pages:
         - 34
@@ -1004,8 +1192,8 @@ components:
       name: GAME_OVER
       title: Spielende mit Rangliste und Kennzahlen
       summary: Spielende mit Rangliste und Kennzahlen
-      description: Alle Schätze und Rückkehr zur homePosition bilden die Siegbedingung; Ende beim ersten
-        Sieger oder Weiterspielen ist serverabhängig. Punktesystem und Gleichstand nicht festgelegt.
+      description: Alle Schätze und Rückkehr zur homePosition bilden die Siegbedingung; Ende beim ersten Sieger
+        oder Weiterspielen ist serverabhängig. Punktesystem und Gleichstand nicht festgelegt.
       contentType: application/json
       payload:
         $ref: "#/components/schemas/GameOverEnvelope"
@@ -1058,8 +1246,8 @@ components:
       name: ERROR
       title: Befehl abgewiesen
       summary: Befehl abgewiesen
-      description: Nur an Verursacher; Spielzustand unverändert. Beliebig viele Wiederholungsversuche,
-        Zugzeit läuft weiter. correlationType korreliert nur den Befehlstyp, keine einzelne Anfrage.
+      description: Nur an Verursacher; Spielzustand unverändert. Beliebig viele Wiederholungsversuche, Zugzeit
+        läuft weiter. correlationType korreliert nur den Befehlstyp, keine einzelne Anfrage.
       contentType: application/json
       payload:
         $ref: "#/components/schemas/ErrorEnvelope"
@@ -1100,7 +1288,12 @@ components:
       type: string
       enum:
         - WAITING_FOR_PUSH
+        - WAITING_FOR_BONUS_USE
         - WAITING_FOR_MOVE
+      description: "WAITING_FOR_PUSH: Ersatzkachel einschieben (oder PUSH_FIXED). Danach WAITING_FOR_BONUS_USE:
+        optional BEAM/SWAP einsetzen oder mit PASS_MOVE nur diese Phase überspringen. Danach
+        WAITING_FOR_MOVE: Figur bewegen, mit PASS_MOVE den Zug beenden oder PUSH_TWICE für einen weiteren
+        Schub aktivieren. Der Server sendet jeden Phasenwechsel im vollständigen GAME_STATE_UPDATE."
     BonusType:
       type: string
       enum:
@@ -1155,11 +1348,11 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          $ref: "#/components/schemas/TreasureId"
         name:
           type: string
-      description: Schatzkennungen und Namen sind nicht gruppenübergreifend aufgelistet; keine erfundene
-        ID-Range.
+      description: Ein Schatz aus dem gemeinsamen ID-Bereich 0–23. Pro Partie können weniger als 24
+        verschiedene Schätze verwendet werden.
       required:
         - id
         - name
@@ -1173,9 +1366,7 @@ components:
           uniqueItems: true
           description: Verbindliche offene Wege; rotation ist nur ein Darstellungswert.
         rotation:
-          type: integer
-          minimum: 0
-          maximum: 3
+          $ref: "#/components/schemas/Rotation"
         treasure:
           anyOf:
             - $ref: "#/components/schemas/Treasure"
@@ -1207,15 +1398,53 @@ components:
     Push:
       type: object
       properties:
-        rowOrColIndex:
+        rowIndex:
           type: integer
-          description: Zeilenindex für LEFT/RIGHT; Spaltenindex für UP/DOWN.
           minimum: 0
+          description: Zeile der Einfügeposition auf dem Board, 0 bis rows−1.
+        columnIndex:
+          type: integer
+          minimum: 0
+          description: Spalte der Einfügeposition auf dem Board, 0 bis cols−1.
+        rotation:
+          $ref: "#/components/schemas/Rotation"
         direction:
           $ref: "#/components/schemas/Direction"
       required:
-        - rowOrColIndex
+        - rowIndex
+        - columnIndex
+        - rotation
         - direction
+      description: "Einfügeposition ist die Randkachel, auf deren Platz die Ersatzkachel eingeschoben wird
+        (keine Koordinate außerhalb des Boards). RIGHT: columnIndex=0; LEFT: columnIndex=cols−1; DOWN:
+        rowIndex=0; UP: rowIndex=rows−1. Richtung bezeichnet die Bewegung ins Board. Die jeweils andere
+        Koordinate wählt die innere Zeile/Spalte. Dynamische Obergrenzen und letzte Randindizes prüft der
+        Server. Gilt auch für board.lastPush und PUSH_FIXED."
+      oneOf:
+        - properties:
+            direction:
+              const: RIGHT
+            columnIndex:
+              const: 0
+        - properties:
+            direction:
+              const: LEFT
+            columnIndex:
+              type: integer
+              minimum: 2
+              multipleOf: 2
+        - properties:
+            direction:
+              const: DOWN
+            rowIndex:
+              const: 0
+        - properties:
+            direction:
+              const: UP
+            rowIndex:
+              type: integer
+              minimum: 2
+              multipleOf: 2
     Board:
       type: object
       properties:
@@ -1236,8 +1465,8 @@ components:
           $ref: "#/components/schemas/Tile"
         lastPush:
           $ref: "#/components/schemas/Push"
-      description: lastPush optional, beim initialen Zustand weglassen. Matrix-Dimensionen sind dynamisch
-        und serverseitig zu prüfen.
+      description: lastPush optional, beim initialen Zustand weglassen. Matrix-Dimensionen sind dynamisch und
+        serverseitig zu prüfen.
       required:
         - rows
         - cols
@@ -1314,8 +1543,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Coordinates"
-      description: Erreichbare Positionen werden serverseitig berechnet; im WAITING_FOR_PUSH-Beispiel
-        leere Liste.
+      description: Verbindlicher aktiver Spieler, aktuelle Phase und Zugfrist. WAITING_FOR_BONUS_USE wird wie
+        WAITING_FOR_PUSH und WAITING_FOR_MOVE ausdrücklich übertragen. Erreichbare Positionen werden vom
+        Server berechnet; sie dienen der regulären Bewegung in WAITING_FOR_MOVE. Eine neue Phase allein
+        startet keinen neuen Spielerzug.
       required:
         - activePlayerId
         - turnState
@@ -1341,8 +1572,7 @@ components:
           type: array
           items:
             type: string
-      description: Achievement-Namen und Punktwerte sind serverabhängig; die Quellen definieren kein
-        festes Enum.
+      description: Achievement-Namen und Punktwerte sind serverabhängig; die Quellen definieren kein festes Enum.
       required:
         - stepsTaken
         - tilesPushed
@@ -1389,7 +1619,6 @@ components:
         - NOT_ADMIN
         - NOT_ENOUGH_PLAYERS
         - INVALID_CONFIG
-        - INVALID_ACTION
       oneOf:
         - const: GENERAL_ERROR
           description: Unerwarteter Serverfehler, z. B. eine unbehandelte Exception.
@@ -1402,7 +1631,8 @@ components:
         - const: INVALID_TURN_PHASE
           description: Aktion in der falschen Phase, z. B. Bewegung, obwohl zunächst geschoben werden muss.
         - const: INVALID_PUSH
-          description: Unerlaubter Schiebevorgang, z. B. gerade Reihe ohne Bonus oder direkter Gegenschub des Vorzugs.
+          description: Unerlaubter Schiebevorgang, z. B. gerade Reihe ohne Bonus oder direkter Gegenschub des
+            Vorzugs.
         - const: TARGET_UNREACHABLE
           description: Kein offener Pfad zwischen Spielfigur und Zielfeld.
         - const: POSITION_OCCUPIED
@@ -1424,12 +1654,10 @@ components:
         - const: NOT_ENOUGH_PLAYERS
           description: START_GAME wurde mit weniger als zwei Spielern aufgerufen.
         - const: INVALID_CONFIG
-          description: Ungültige START_GAME-Konfiguration; dokumentierter Auslöser sind rows oder cols, die gerade oder kleiner als drei sind.
-        - const: INVALID_ACTION
-          description: Bei ROTATE_SPARE_TILE dokumentiert. Die genaue Bedeutung und Abgrenzung zu INVALID_TURN_PHASE ist noch abzustimmen.
-      description: Tabelle auf PDF S. 43-44 plus INVALID_CONFIG (START_GAME) und INVALID_ACTION
-        (ROTATE_SPARE_TILE) aus den Operationsbeschreibungen. Für letzteren besteht eine
-        Abstimmungslücke.
+          description: Ungültige START_GAME-Konfiguration; dokumentierter Auslöser sind rows oder cols, die gerade
+            oder kleiner als drei sind.
+      description: Standardisierte Fehlercodes aus der PDF-Tabelle plus INVALID_CONFIG aus START_GAME. Falsche
+        Zugphasen werden durch INVALID_TURN_PHASE gemeldet.
     ConnectData:
       type: object
       properties:
@@ -1456,8 +1684,7 @@ components:
         treasureCardCount:
           type: integer
           default: 6
-          description: Pro Spieler, insgesamt <= 24. Produkt mit tatsächlicher Spieleranzahl serverseitig
-            prüfen.
+          description: Pro Spieler, insgesamt <= 24. Produkt mit tatsächlicher Spieleranzahl serverseitig prüfen.
           minimum: 0
           maximum: 24
         gameDurationInSeconds:
@@ -1497,6 +1724,7 @@ components:
       required:
         - bonusType
         - params
+      description: Erlaubt in WAITING_FOR_BONUS_USE. Ziel muss frei sein. Nach Erfolg WAITING_FOR_MOVE.
     UseBonusSwapData:
       type: object
       properties:
@@ -1513,6 +1741,7 @@ components:
       required:
         - bonusType
         - params
+      description: Erlaubt in WAITING_FOR_BONUS_USE. Anderer Spieler als Ziel; danach WAITING_FOR_MOVE.
     UseBonusPushFixedData:
       type: object
       properties:
@@ -1520,21 +1749,44 @@ components:
           type: string
           const: PUSH_FIXED
         params:
-          type: object
-          properties:
-            rowOrColIndex:
-              type: integer
-              multipleOf: 2
-              description: Gerader innerer Index; nicht 0 und nicht letzter Randindex.
-              minimum: 2
-            direction:
-              $ref: "#/components/schemas/Direction"
-          required:
-            - rowOrColIndex
-            - direction
+          allOf:
+            - $ref: "#/components/schemas/Push"
+            - oneOf:
+                - properties:
+                    direction:
+                      const: RIGHT
+                    rowIndex:
+                      type: integer
+                      minimum: 2
+                      multipleOf: 2
+                - properties:
+                    direction:
+                      const: LEFT
+                    rowIndex:
+                      type: integer
+                      minimum: 2
+                      multipleOf: 2
+                - properties:
+                    direction:
+                      const: UP
+                    columnIndex:
+                      type: integer
+                      minimum: 2
+                      multipleOf: 2
+                - properties:
+                    direction:
+                      const: DOWN
+                    columnIndex:
+                      type: integer
+                      minimum: 2
+                      multipleOf: 2
+          description: "PUSH_FIXED führt den Schub direkt aus: gerader innerer Zeilen-/Spaltenindex, gleiche
+            Randkoordinaten und absolute Rotation wie PUSH_TILE. Kein zusätzlicher PUSH_TILE-Befehl für
+            diesen Schub."
       required:
         - bonusType
         - params
+      description: Erlaubt in WAITING_FOR_PUSH. Führt den Schub unmittelbar aus; danach WAITING_FOR_BONUS_USE.
     UseBonusPushTwiceData:
       type: object
       properties:
@@ -1546,14 +1798,23 @@ components:
       required:
         - bonusType
         - params
+      description: Erlaubt in WAITING_FOR_MOVE nach dem ersten Schub. Setzt auf WAITING_FOR_PUSH zurück;
+        anschließend PUSH_TILE senden.
     UseBonusData:
       oneOf:
         - $ref: "#/components/schemas/UseBonusBeamData"
         - $ref: "#/components/schemas/UseBonusSwapData"
         - $ref: "#/components/schemas/UseBonusPushFixedData"
         - $ref: "#/components/schemas/UseBonusPushTwiceData"
-      description: params hängt strikt vom bonusType ab. PUSH_TWICE setzt WAITING_FOR_MOVE auf
-        WAITING_FOR_PUSH; Phasen für übrige Boni noch nicht abschließend definiert.
+      description: Nur aktiver Spieler; Bonus muss im Inventar verfügbar sein und wird bei erfolgreicher
+        Nutzung einmalig verbraucht. BEAM und SWAP sind in WAITING_FOR_BONUS_USE erlaubt und führen
+        danach zu WAITING_FOR_MOVE. BEAM teleportiert auf ein freies Feld; SWAP tauscht mit einem anderen
+        Spieler. PUSH_FIXED ist in WAITING_FOR_PUSH erlaubt und schiebt mit seinen params direkt eine
+        gerade innere Zeile/Spalte; danach WAITING_FOR_BONUS_USE. PUSH_TWICE ist wie bisher in
+        WAITING_FOR_MOVE nach dem ersten Schub erlaubt und setzt auf WAITING_FOR_PUSH zurück; der
+        folgende Schub erfolgt mit PUSH_TILE. BONUS_USED mit typabhängigen details und vollständiges
+        GAME_STATE_UPDATE folgen. PASS_MOVE überspringt eine ungenutzte Bonusphase. Fehler
+        BONUS_NOT_AVAILABLE, INVALID_BONUS_TARGET, NOT_YOUR_TURN, INVALID_TURN_PHASE.
     SetAiModeData:
       type: object
       properties:
@@ -1638,19 +1899,46 @@ components:
       type: object
       properties:
         treasureId:
-          type: integer
+          anyOf:
+            - $ref: "#/components/schemas/TreasureId"
+            - type: "null"
         name:
-          type: string
+          type:
+            - string
+            - "null"
         remainingTreasureCount:
           type: integer
           minimum: 0
           maximum: 24
-      description: Nur die jeweils nächste geheime Schatzkarte. Darstellung nach letzter Karte (Rückkehr
-        zur Ecke) noch offen.
+      description: "Privat an den berechtigten Spieler, niemals Broadcast. Nach Start, Schatzfund und
+        Reconnect. remainingTreasureCount zählt noch zu sammelnde Karten einschließlich der aktuellen
+        Karte. Bei remainingTreasureCount > 0 sind treasureId (0–23) und name gesetzt. Bei 0 sind
+        treasureId und name ausdrücklich null: keine aktive Schatzkarte, stattdessen zur eigenen
+        homePosition aus players in GAME_STATE_UPDATE zurückkehren. Der Client zeigt diesen Auftrag an;
+        NEXT_TREASURE wird nicht mit einer Homebase-Schatz-ID zweckentfremdet. Die Bewegung erfolgt
+        weiterhin regulär. Rückkehr bei 0 erfüllt die Heimkehrbedingung; GAME_OVER richtet sich nach den
+        Spielenderegeln."
       required:
         - treasureId
         - name
         - remainingTreasureCount
+      oneOf:
+        - properties:
+            remainingTreasureCount:
+              const: 0
+            treasureId:
+              type: "null"
+            name:
+              type: "null"
+        - properties:
+            remainingTreasureCount:
+              type: integer
+              minimum: 1
+              maximum: 24
+            treasureId:
+              $ref: "#/components/schemas/TreasureId"
+            name:
+              type: string
     GameStateUpdateData:
       type: object
       properties:
@@ -1694,30 +1982,22 @@ components:
         - bonusId
         - bonusType
     BonusUsedData:
-      type: object
-      properties:
-        playerId:
-          $ref: "#/components/schemas/PlayerId"
-        bonusType:
-          $ref: "#/components/schemas/BonusType"
-        details:
-          type: object
-          properties:
-            swappedWithPlayerId:
-              $ref: "#/components/schemas/PlayerId"
-          description: Nur SWAP-Beispiel spezifiziert. Details anderer Boni bleiben offen; Erweiterungsfelder
-            erlaubt.
-      required:
-        - playerId
-        - bonusType
-        - details
+      oneOf:
+        - $ref: "#/components/schemas/BonusUsedBeamData"
+        - $ref: "#/components/schemas/BonusUsedSwapData"
+        - $ref: "#/components/schemas/BonusUsedPushFixedData"
+        - $ref: "#/components/schemas/BonusUsedPushTwiceData"
+      description: "details ist durch bonusType eindeutig typisiert: BEAM nennt targetCoordinates, SWAP
+        swappedWithPlayerId, PUSH_FIXED die ausgeführten Einfügekoordinaten samt rotation/direction,
+        PUSH_TWICE den freigeschalteten turnState WAITING_FOR_PUSH. Danach folgt immer ein vollständiger
+        GAME_STATE_UPDATE mit dem tatsächlichen Board und allen Spielerpositionen."
     TreasureFoundData:
       type: object
       properties:
         playerId:
           $ref: "#/components/schemas/PlayerId"
         treasureId:
-          type: integer
+          $ref: "#/components/schemas/TreasureId"
         treasureName:
           type: string
         pointsAwarded:
@@ -1869,18 +2149,6 @@ components:
       required:
         - type
         - data
-    RotateSpareTileEnvelope:
-      type: object
-      properties:
-        type:
-          type: string
-          const: ROTATE_SPARE_TILE
-        data:
-          $ref: "#/components/schemas/EmptyData"
-      description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
-      required:
-        - type
-        - data
     PushTileEnvelope:
       type: object
       properties:
@@ -1888,7 +2156,7 @@ components:
           type: string
           const: PUSH_TILE
         data:
-          $ref: "#/components/schemas/Push"
+          $ref: "#/components/schemas/PushTileData"
       description: Vollständige WebSocket-Nachricht einschließlich type/data-Envelope.
       required:
         - type
@@ -2157,6 +2425,162 @@ components:
       required:
         - type
         - data
+    TreasureId:
+      type: integer
+      minimum: 0
+      maximum: 23
+      description: Gemeinsame Schatzkennung 0–23 (höchstens 24 verschiedene Schätze). Gleiche IDs bezeichnen
+        denselben Schatz in Board, NEXT_TREASURE und TREASURE_FOUND. Namen/Motive sind zusätzlich
+        abzustimmen; keine Ableitung der ID aus dem Kartenzähler.
+    Rotation:
+      type: integer
+      minimum: 0
+      maximum: 3
+      description: "Absolute Orientierung gegenüber der ungedrehten Ausgangslage, im Uhrzeigersinn: 0 = 0°, 1 =
+        90°, 2 = 180°, 3 = 270°. Kein relativer Drehschritt. Bei PUSH_TILE legt dieser Wert die
+        Orientierung der einzuschiebenden Ersatzkachel fest. Im State bleiben entrances die verbindlichen
+        offenen Wege; der Server hält entrances und rotation konsistent."
+    PushTileData:
+      allOf:
+        - $ref: "#/components/schemas/Push"
+        - oneOf:
+            - properties:
+                direction:
+                  const: RIGHT
+                rowIndex:
+                  type: integer
+                  minimum: 1
+                  not:
+                    multipleOf: 2
+            - properties:
+                direction:
+                  const: LEFT
+                rowIndex:
+                  type: integer
+                  minimum: 1
+                  not:
+                    multipleOf: 2
+            - properties:
+                direction:
+                  const: UP
+                columnIndex:
+                  type: integer
+                  minimum: 1
+                  not:
+                    multipleOf: 2
+            - properties:
+                direction:
+                  const: DOWN
+                columnIndex:
+                  type: integer
+                  minimum: 1
+                  not:
+                    multipleOf: 2
+      description: "Regulärer Schub: ungerader innerer Zeilenindex bei LEFT/RIGHT oder Spaltenindex bei
+        UP/DOWN. Direkter Gegenschub des Vorzugs verboten. rotation wird vor dem Schieben auf die
+        Ersatzkachel angewandt."
+    BonusUsedBeamData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        bonusType:
+          type: string
+          const: BEAM
+        details:
+          type: object
+          properties:
+            targetCoordinates:
+              $ref: "#/components/schemas/Coordinates"
+          required:
+            - targetCoordinates
+      required:
+        - playerId
+        - bonusType
+        - details
+    BonusUsedSwapData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        bonusType:
+          type: string
+          const: SWAP
+        details:
+          type: object
+          properties:
+            swappedWithPlayerId:
+              $ref: "#/components/schemas/PlayerId"
+          required:
+            - swappedWithPlayerId
+      required:
+        - playerId
+        - bonusType
+        - details
+    BonusUsedPushFixedData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        bonusType:
+          type: string
+          const: PUSH_FIXED
+        details:
+          allOf:
+            - $ref: "#/components/schemas/Push"
+            - oneOf:
+                - properties:
+                    direction:
+                      const: RIGHT
+                    rowIndex:
+                      type: integer
+                      minimum: 2
+                      multipleOf: 2
+                - properties:
+                    direction:
+                      const: LEFT
+                    rowIndex:
+                      type: integer
+                      minimum: 2
+                      multipleOf: 2
+                - properties:
+                    direction:
+                      const: UP
+                    columnIndex:
+                      type: integer
+                      minimum: 2
+                      multipleOf: 2
+                - properties:
+                    direction:
+                      const: DOWN
+                    columnIndex:
+                      type: integer
+                      minimum: 2
+                      multipleOf: 2
+      required:
+        - playerId
+        - bonusType
+        - details
+    BonusUsedPushTwiceData:
+      type: object
+      properties:
+        playerId:
+          $ref: "#/components/schemas/PlayerId"
+        bonusType:
+          type: string
+          const: PUSH_TWICE
+        details:
+          type: object
+          properties:
+            turnState:
+              type: string
+              const: WAITING_FOR_PUSH
+          required:
+            - turnState
+      required:
+        - playerId
+        - bonusType
+        - details
 x-sources:
   repositoryCommit: 8b4f61f0357d5ed935c4e1b674baca168927e0c0
   documents:

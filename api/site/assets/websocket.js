@@ -177,7 +177,7 @@
     }
     const catalog = el('section', 'error-catalog'); catalog.id = 'error-codes';
     const catalogHeading = el('h2', 'group-heading', 'Fehlercodes'); catalogHeading.append(el('span', 'group-count', `${errorCodes.length} Codes · Server → Client`));
-    catalog.append(catalogHeading, el('p', 'error-intro', 'Alle Fehler werden über ERROR an den verursachenden Client gemeldet. Die Übersicht enthält die standardisierten Codes der Dokumente sowie die zwei zusätzlich in Befehlsbeschreibungen genannten Codes.'), jumpLink('ERROR: Nachricht und JSON-Beispiele öffnen →', '#message-error', 'error-message-link'));
+    catalog.append(catalogHeading, el('p', 'error-intro', 'Alle Fehler werden über ERROR an den verursachenden Client gemeldet. Die Übersicht enthält die standardisierten Codes der Dokumente sowie weitere in Befehlsbeschreibungen genannte Codes.'), jumpLink('ERROR: Nachricht und JSON-Beispiele öffnen →', '#message-error', 'error-message-link'));
     for (const item of errorCodes) {
       const card = el('article', 'error-code-card'); card.id = errorAnchor(item.const); card.tabIndex = -1;
       const heading = el('h3'); heading.append(el('code', '', item.const));
